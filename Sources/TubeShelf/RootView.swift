@@ -50,6 +50,9 @@ struct RootView: View {
         .sheet(isPresented: $model.isChannelBrowserPresented) {
             ChannelBrowserView(model: model)
         }
+        .sheet(isPresented: $model.isProfileManagerPresented) {
+            ProfileManagerView(model: model)
+        }
         .sheet(isPresented: Binding(
             get: { model.editingVideoID != nil },
             set: { if !$0 { model.editingVideoID = nil } }
@@ -95,12 +98,10 @@ struct SidebarView: View {
         VStack(spacing: 0) {
             HStack(spacing: 9) {
                 LogoMark(size: 24)
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("TubeShelf")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    Text("\(model.library.count) saved")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                    profileSwitcher
                 }
                 Spacer(minLength: 0)
             }
@@ -319,6 +320,43 @@ struct SidebarView: View {
         } message: {
             Text(dialogMessage)
         }
+    }
+
+    private var profileSwitcher: some View {
+        Menu {
+            Section("Profiles") {
+                ForEach(model.profiles) { profile in
+                    Button {
+                        model.switchProfile(profile.id)
+                    } label: {
+                        if profile.id == model.activeProfileID {
+                            Label(profile.name, systemImage: "checkmark")
+                        } else {
+                            Text(profile.name)
+                        }
+                    }
+                }
+            }
+            Divider()
+            Button("Add from Backup…") { BackupActions.importProfile(model) }
+            Button("New Empty Profile…") { BackupActions.promptForNewProfile(model) }
+            Button("Manage Profiles…") { model.isProfileManagerPresented = true }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 9, weight: .medium))
+                Text(model.currentProfile?.name ?? "Profile")
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 6, weight: .bold))
+            }
+            .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Switch profile — each shelf is a separate folder")
     }
 
     private var dialogTitle: String {

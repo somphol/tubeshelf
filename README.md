@@ -119,6 +119,21 @@ Paste a duplicate link and the sheet says so, but stays editable: the existing
 categories and note arrive prefilled, **Update video** saves changes in place, and
 **Show it on the shelf** jumps to it. Nothing is duplicated.
 
+## Profiles
+
+A profile is a whole separate shelf. Your own videos never mix with a friend's
+list, and importing someone else's export cannot overwrite your data.
+
+- The sidebar shows the current profile under the app name — click it to switch.
+- **Add from Backup…** imports a `.json` export as a *new* profile and switches to it.
+- **New Empty Profile…** starts a clean shelf for a different topic or person.
+- **Manage Profiles…** renames, switches, or moves a profile to the Trash.
+- Every profile is its own folder, so deleting one cannot damage another, and the
+  last profile cannot be deleted.
+
+On the first launch after upgrading, the existing `library.json` is copied into a
+profile called **My Shelf**. The original file is left untouched as a backup.
+
 ## Backup and restore
 
 *Settings → Library → **Back up…*** (or **⇧⌘S**) writes one JSON file:
@@ -126,7 +141,8 @@ videos, categories, notes and pins. Put it in a Google Drive, Dropbox or iCloud
 folder and it is a portable snapshot — not a live sync.
 
 *Restore…* reads that file back, shows how many videos are in it, and replaces the
-shelf only after you confirm. Before anything changes, the outgoing library is
+**current profile** only after you confirm. To keep both shelves instead, use
+*Profiles → Add from Backup…*, which creates a new profile and leaves yours alone. Before anything changes, the outgoing library is
 copied to `library-before-restore-<timestamp>.json` next to your library file, so a
 wrong choice is always recoverable.
 
@@ -143,8 +159,12 @@ swift run tubeshelf-check --restore ~/Desktop/shelf.json
 
 ```
 ~/Library/Application Support/TubeShelf/
-├── library.json          # every video, tag and note
-└── Thumbnails/           # cached artwork, safe to delete
+├── Profiles/
+│   └── <uuid>/
+│       ├── profile.json  # name, created date, import source
+│       └── library.json  # that profile's videos, tags and pins
+├── Thumbnails/           # shared artwork cache, safe to delete
+└── library.json          # pre-profile file, kept as a backup after migration
 ```
 
 Back up by copying that folder. The app writes atomically; a corrupt file is moved
@@ -153,7 +173,7 @@ aside as `library-corrupt-<timestamp>.json` instead of being overwritten.
 ## Verification
 
 ```bash
-swift test                          # 29 unit tests: links, tagging, shelf, deck, disk
+swift test                          # 74 unit tests: links, tagging, shelf, deck, disk, profiles
 swift run tubeshelf-check           # headless checks against the same logic
 swift run tubeshelf-check --probe   # model status + live suggestions
 swift run tubeshelf-check --fetch <link>   # metadata + suggestion for one video
@@ -183,6 +203,8 @@ swift run tubeshelf-check --help                 # every flag
 | `.../CategoryManagerView.swift` | Browse, sort, pin, rename, merge and delete categories |
 | `.../ChannelBrowserView.swift` | Channels sorted by size, with a deck per channel |
 | `Sources/TubeShelfCore/PageWindow.swift` | Pure pagination maths and clamping |
+| `Sources/TubeShelfCore/ProfileStore.swift` | One folder per shelf, migration, safe delete |
+| `.../ProfileManagerView.swift` | Switch, rename, import and trash profiles |
 | `.../DeckView.swift` | Full-window slide deck |
 | `.../AddVideoSheet.swift` | Paste → preview → classify → save |
 | `scripts/build-app.sh` | Builds and ad-hoc signs the `.app` |

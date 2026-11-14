@@ -4,7 +4,7 @@ import TubeShelfCore
 
 @main
 struct TubeShelfApp: App {
-    @State private var model = AppModel(store: AppModel.defaultStore())
+    @State private var model = AppModel(profileStore: AppModel.defaultProfileStore())
 
     var body: some Scene {
         WindowGroup("TubeShelf") {

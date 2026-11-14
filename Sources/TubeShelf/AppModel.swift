@@ -39,7 +39,11 @@ final class AppModel {
         didSet { Preferences.categorySortAscending = categorySortAscending }
     }
 
-    let store: LibraryStore
+    var store: LibraryStore
+    let profileStore: ProfileStore
+    var profiles: [Profile]
+    var activeProfileID: UUID
+    var isProfileManagerPresented = false
     let modelStatus: OnDeviceModelStatus
     private let engine = TagEngine()
     private var toastTask: Task<Void, Never>?
@@ -47,28 +51,133 @@ final class AppModel {
     private var deckQuery: String = ""
 
     /// Release builds always use the real Application Support folder; the debug
-    /// snapshot mode can point at a throwaway library for scale testing.
-    static func defaultStore() -> LibraryStore {
+    /// snapshot mode can point at a throwaway root for scale testing.
+    static func defaultProfileStore() -> ProfileStore {
         #if DEBUG
         if let directory = SnapshotConfig.libraryDirectory {
-            return LibraryStore(directory: directory)
+            return ProfileStore(root: directory)
         }
         #endif
-        return LibraryStore()
+        return ProfileStore()
     }
 
-    init(store: LibraryStore) {
-        self.store = store
+    init(profileStore: ProfileStore) {
+        self.profileStore = profileStore
         self.modelStatus = TagEngine.status
         self.categorySort = Preferences.categorySort
         self.categorySortAscending = Preferences.categorySortAscending
         self.searchScope = Preferences.searchScope
+
+        let loaded = (try? profileStore.profiles()) ?? []
+        let savedID = Preferences.activeProfileID.flatMap(UUID.init(uuidString:))
+        let active = loaded.first(where: { $0.id == savedID }) ?? loaded.first
+
+        self.profiles = loaded
+        self.activeProfileID = active?.id ?? UUID()
+        self.store = active.map { profileStore.libraryStore(for: $0) }
+            ?? LibraryStore(directory: profileStore.root)
         self.library = Library()
+
+        if let active {
+            Preferences.activeProfileID = active.id.uuidString
+            do {
+                self.library = try self.store.load()
+            } catch {
+                self.toast = "Could not read \(active.name): \(error.localizedDescription)"
+            }
+        } else {
+            self.toast = "Could not open your profiles: using an empty shelf"
+        }
+    }
+
+    var currentProfile: Profile? {
+        profiles.first { $0.id == activeProfileID }
+    }
+
+    // MARK: - Profiles
+
+    func switchProfile(_ id: UUID) {
+        guard id != activeProfileID,
+              let profile = profiles.first(where: { $0.id == id })
+        else { return }
+
+        save()
+        store = profileStore.libraryStore(for: profile)
+        activeProfileID = id
+        Preferences.activeProfileID = id.uuidString
+
         do {
-            self.library = try store.load()
+            library = try store.load()
         } catch {
-            self.library = Library()
-            self.toast = "Could not read your library: \(error.localizedDescription)"
+            library = Library()
+            toast = "Could not read \(profile.name): \(error.localizedDescription)"
+        }
+
+        filter = .all
+        query = ""
+        sidebarQuery = ""
+        pageIndex = 0
+        deck = nil
+        editingVideoID = nil
+        isAddPresented = false
+        flash("Switched to \(profile.name)")
+    }
+
+    /// Creates a shelf from a file without touching any other profile.
+    @discardableResult
+    func addProfile(name: String, library incoming: Library, importedFrom: String?) throws -> Profile {
+        let unique = profileStore.uniqueName(name, among: profiles)
+        let profile = try profileStore.create(
+            name: unique,
+            library: incoming,
+            importedFrom: importedFrom
+        )
+        profiles = (try? profileStore.profiles()) ?? (profiles + [profile])
+        switchProfile(profile.id)
+        return profile
+    }
+
+    func createEmptyProfile(named name: String) {
+        do {
+            try addProfile(name: name, library: Library(), importedFrom: nil)
+        } catch {
+            flash("Could not create profile: \(error.localizedDescription)")
+        }
+    }
+
+    func renameProfile(_ id: UUID, to newName: String) {
+        let cleaned = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty,
+              var profile = profiles.first(where: { $0.id == id })
+        else { return }
+        profile.name = cleaned
+        do {
+            try profileStore.saveMetadata(profile)
+            profiles = try profileStore.profiles()
+            flash("Renamed to \(cleaned)")
+        } catch {
+            flash("Could not rename: \(error.localizedDescription)")
+        }
+    }
+
+    /// Deletes a profile by moving its folder to the Trash. The last profile is
+    /// never removable, and the active one hands over to a neighbour first.
+    func deleteProfile(_ id: UUID) {
+        guard profiles.count > 1,
+              let profile = profiles.first(where: { $0.id == id })
+        else { return }
+
+        if id == activeProfileID,
+           let next = profiles.first(where: { $0.id != id }) {
+            switchProfile(next.id)
+        }
+
+        do {
+            try profileStore.trash(profile)
+            profiles = (try? profileStore.profiles()) ?? profiles.filter { $0.id != id }
+            flash("Moved \(profile.name) to the Trash")
+        } catch {
+            flash("Could not delete \(profile.name): \(error.localizedDescription)")
         }
     }
 
@@ -443,6 +552,17 @@ enum Preferences {
     }
 
     static let pageSizeOptions = [24, 48, 96, 144]
+
+    static var activeProfileID: String? {
+        get { defaults.string(forKey: "activeProfileID") }
+        set {
+            if let newValue {
+                defaults.set(newValue, forKey: "activeProfileID")
+            } else {
+                defaults.removeObject(forKey: "activeProfileID")
+            }
+        }
+    }
 
     static var pageSize: Int {
         get {

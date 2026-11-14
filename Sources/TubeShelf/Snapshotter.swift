@@ -45,6 +45,8 @@ enum Snapshotter {
                 model.isCategoryManagerPresented = true
             case "channels":
                 model.isChannelBrowserPresented = true
+            case "profiles":
+                model.isProfileManagerPresented = true
             case "channel":
                 if let top = model.library.channelCounts().first {
                     model.showChannel(top.name)

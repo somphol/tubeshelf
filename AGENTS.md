@@ -71,6 +71,19 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`channelAffinity` is a fallback, never an override.** Three videos minimum,
   at least two in one category, at least 60% share; it only fills an empty
   suggestion and only with a taxonomy category.
+- **One folder per profile, no central index.** `Profiles/<uuid>/profile.json`
+  plus that folder's `library.json` is the truth; the list is rebuilt by scanning.
+  Deleting the index cannot hide a shelf. The active profile ID lives in
+  `UserDefaults`, never in the data.
+- **Adoption is copy-only.** The first profile copies the legacy root
+  `library.json`; the original is never moved or deleted, so a failed migration
+  still leaves the data where it was.
+- **Deleting a profile goes to the Trash**, and the last profile is not removable.
+  `AppModel.deleteProfile` hands over to a neighbour before trashing the active
+  one; do not reorder those two steps.
+- **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
+  a profile switch will write into the wrong shelf. Always go through
+  `model.store` / `model.save()`.
 - **Aliases never rewrite storage.** `TagNormalizer.canonical` only cleans and
   capitalises; `taxonomyMatch` is the alias-aware lookup used solely for model
   output. Rewriting "Learning" to "Education" at entry made it impossible to
@@ -132,6 +145,8 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   fallback has actually executed. Verify on a Mac with Apple Intelligence enabled
   using `swift run tubeshelf-check --probe` and expect `Apple Intelligence` as the
   source.
+- Profiles are per-machine; there is no merge between two profiles. Moving a
+  shelf between them means export + import-as-profile.
 - Channel merging is not offered: channel names come from YouTube, so renaming
   one would only fragment it further. Category merge (sidebar and manager) covers
   the case that matters.

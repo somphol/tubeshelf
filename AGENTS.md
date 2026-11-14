@@ -71,6 +71,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - **`channelAffinity` is a fallback, never an override.** Three videos minimum,
   at least two in one category, at least 60% share; it only fills an empty
   suggestion and only with a taxonomy category.
+- **An empty shelf must always offer a way out.** `ShelfView` checks
+  `otherPopulatedProfiles` and surfaces *Switch to …* and *Restore from backup…*
+  before the examples. Do not replace that with a plain "your shelf is empty"
+  message: being parked on an empty profile looks exactly like data loss.
 - **One folder per profile, no central index.** `Profiles/<uuid>/profile.json`
   plus that folder's `library.json` is the truth; the list is rebuilt by scanning.
   Deleting the index cannot hide a shelf. The active profile ID lives in
@@ -145,7 +149,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   fallback has actually executed. Verify on a Mac with Apple Intelligence enabled
   using `swift run tubeshelf-check --probe` and expect `Apple Intelligence` as the
   source.
-- Profiles are per-machine; there is no merge between two profiles. Moving a
+- Profiles are per-machine; there is no merge between two profiles.
+- `activeProfileID` lives in `UserDefaults` and is written even when the debug
+  snapshot override (`TUBESHELF_LIBRARY_DIR`) points at a throwaway root. After
+  such a run, reset it or the real app opens on a demo profile. Moving a
   shelf between them means export + import-as-profile.
 - Channel merging is not offered: channel names come from YouTube, so renaming
   one would only fragment it further. Category merge (sidebar and manager) covers

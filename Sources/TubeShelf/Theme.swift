@@ -119,6 +119,8 @@ struct EmptyStateView: View {
     var primaryAction: (() -> Void)?
     var secondaryTitle: String?
     var secondaryAction: (() -> Void)?
+    var tertiaryTitle: String?
+    var tertiaryAction: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 14) {
@@ -150,6 +152,12 @@ struct EmptyStateView: View {
                 }
             }
             .padding(.top, 4)
+
+            if let tertiaryTitle, let tertiaryAction {
+                Button(tertiaryTitle, action: tertiaryAction)
+                    .buttonStyle(.link)
+                    .font(.system(size: 11.5))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)

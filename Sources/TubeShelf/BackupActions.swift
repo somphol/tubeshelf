@@ -83,6 +83,16 @@ enum BackupActions {
             return
         }
 
+        if incoming.count == 0 {
+            let warning = NSAlert()
+            warning.alertStyle = .warning
+            warning.messageText = "That backup contains no videos"
+            warning.informativeText = "“\(url.lastPathComponent)” is a valid TubeShelf file, but it has nothing in it. Add it as an empty profile anyway?"
+            warning.addButton(withTitle: "Add Anyway")
+            warning.addButton(withTitle: "Cancel")
+            guard warning.runModal() == .alertFirstButtonReturn else { return }
+        }
+
         let suggested = defaultProfileName(from: url)
         guard let name = promptForName(
             title: "Name this profile",

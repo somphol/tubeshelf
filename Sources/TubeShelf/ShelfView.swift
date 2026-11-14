@@ -101,6 +101,13 @@ struct ShelfView: View {
         }
     }
 
+    private func emptyShelfMessage(_ elsewhere: (profile: Profile, count: Int)?) -> String {
+        if let elsewhere {
+            return "Nothing saved here yet. Your other profile “\(elsewhere.profile.name)” has \(elsewhere.count) video\(elsewhere.count == 1 ? "" : "s"), or restore a backup into this one."
+        }
+        return "Paste a YouTube link and TubeShelf fetches the title, thumbnail and suggested categories. Everything stays on this Mac."
+    }
+
     private var pager: some View {
         VStack(spacing: 0) {
             Divider().opacity(0.4)
@@ -186,14 +193,37 @@ struct ShelfView: View {
                     secondaryAction: model.searchScope == .titles ? { model.searchScope = .everything } : nil
                 )
             } else if model.library.isEmpty {
+                let elsewhere = model.otherPopulatedProfiles.first
                 EmptyStateView(
-                    symbol: "square.stack.3d.up",
-                    title: "Your shelf is empty",
-                    message: "Paste a YouTube link and TubeShelf fetches the title, thumbnail and suggested categories. Everything stays on this Mac.",
-                    primaryTitle: "Add a YouTube link",
-                    primaryAction: { model.isAddPresented = true },
-                    secondaryTitle: "Try it with examples",
-                    secondaryAction: { model.addSamples() }
+                    symbol: elsewhere == nil ? "square.stack.3d.up" : "person.crop.circle.badge.questionmark",
+                    title: elsewhere == nil
+                        ? "Your shelf is empty"
+                        : "“\(model.currentProfile?.name ?? "This profile")” is empty",
+                    message: emptyShelfMessage(elsewhere),
+                    primaryTitle: elsewhere.map { "Switch to \($0.profile.name) (\($0.count))" } ?? "Add a YouTube link",
+                    primaryAction: {
+                        if let elsewhere {
+                            model.switchProfile(elsewhere.profile.id)
+                        } else {
+                            model.isAddPresented = true
+                        }
+                    },
+                    secondaryTitle: elsewhere == nil ? "Add a YouTube link" : "Restore from backup…",
+                    secondaryAction: {
+                        if elsewhere == nil {
+                            model.isAddPresented = true
+                        } else {
+                            BackupActions.restore(model)
+                        }
+                    },
+                    tertiaryTitle: elsewhere == nil ? "Restore from backup…" : "Try it with examples",
+                    tertiaryAction: {
+                        if elsewhere == nil {
+                            BackupActions.restore(model)
+                        } else {
+                            model.addSamples()
+                        }
+                    }
                 )
             } else if case .favorites = model.filter {
                 EmptyStateView(

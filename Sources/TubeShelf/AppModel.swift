@@ -137,6 +137,20 @@ final class AppModel {
         return profile
     }
 
+    func videoCount(for profile: Profile) -> Int {
+        (try? profileStore.libraryStore(for: profile).load().count) ?? 0
+    }
+
+    /// Other shelves that actually contain something — used to offer a way back
+    /// when the current profile is empty.
+    var otherPopulatedProfiles: [(profile: Profile, count: Int)] {
+        profiles
+            .filter { $0.id != activeProfileID }
+            .map { ($0, videoCount(for: $0)) }
+            .filter { $0.1 > 0 }
+            .sorted { $0.1 > $1.1 }
+    }
+
     func createEmptyProfile(named name: String) {
         do {
             try addProfile(name: name, library: Library(), importedFrom: nil)

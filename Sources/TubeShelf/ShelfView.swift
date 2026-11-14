@@ -103,7 +103,7 @@ struct ShelfView: View {
 
     private func emptyShelfMessage(_ elsewhere: (profile: Profile, count: Int)?) -> String {
         if let elsewhere {
-            return "Nothing saved here yet. Your other profile “\(elsewhere.profile.name)” has \(elsewhere.count) video\(elsewhere.count == 1 ? "" : "s"), or restore a backup into this one."
+            return "Nothing saved here yet. Add a link to start this shelf, switch to “\(elsewhere.profile.name)” (\(elsewhere.count)), or restore a backup into this profile."
         }
         return "Paste a YouTube link and TubeShelf fetches the title, thumbnail and suggested categories. Everything stays on this Mac."
     }
@@ -200,7 +200,7 @@ struct ShelfView: View {
                         ? "Your shelf is empty"
                         : "“\(model.currentProfile?.name ?? "This profile")” is empty",
                     message: emptyShelfMessage(elsewhere),
-                    primaryTitle: elsewhere.map { "Switch to \($0.profile.name) (\($0.count))" } ?? "Add a YouTube link",
+                    primaryTitle: elsewhere.map { "Switch to \($0.profile.name) · \($0.count) video\($0.count == 1 ? "" : "s")" } ?? "Add a YouTube link",
                     primaryAction: {
                         if let elsewhere {
                             model.switchProfile(elsewhere.profile.id)
@@ -208,21 +208,15 @@ struct ShelfView: View {
                             model.isAddPresented = true
                         }
                     },
-                    secondaryTitle: elsewhere == nil ? "Add a YouTube link" : "Restore from backup…",
+                    secondaryTitle: "Add a YouTube link",
                     secondaryAction: {
-                        if elsewhere == nil {
-                            model.isAddPresented = true
-                        } else {
-                            BackupActions.restore(model)
-                        }
+                        // Starting fresh in an empty profile is a first-class action,
+                        // not something hidden behind the toolbar.
+                        model.isAddPresented = true
                     },
-                    tertiaryTitle: elsewhere == nil ? "Restore from backup…" : "Try it with examples",
+                    tertiaryTitle: "Restore from backup…",
                     tertiaryAction: {
-                        if elsewhere == nil {
-                            BackupActions.restore(model)
-                        } else {
-                            model.addSamples()
-                        }
+                        BackupActions.restore(model)
                     }
                 )
             } else if case .favorites = model.filter {

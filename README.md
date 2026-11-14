@@ -134,8 +134,9 @@ list, and importing someone else's export cannot overwrite your data.
 On the first launch after upgrading, the existing `library.json` is copied into a
 profile called **My Shelf**. The original file is left untouched as a backup.
 
-If the profile you are looking at is empty, the shelf says so and offers a way out:
-**Switch to <your other profile> (45)** plus **Restore from backup…**. Importing a
+If the profile you are looking at is empty, the shelf says so and offers three
+ways forward: **Switch to <your other profile>**, **Add a YouTube link** (starting
+this shelf from scratch), or **Restore from backup…**. Importing a
 file that contains no videos asks for confirmation first, instead of silently
 parking you on an empty shelf.
 

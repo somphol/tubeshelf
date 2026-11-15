@@ -50,9 +50,9 @@ struct ShelfView: View {
                 .fixedSize()
             }
 
-            if !model.isBrowsingPlaylists, model.isShuffled {
+            if model.isCurrentListShuffled {
                 Button {
-                    model.clearShuffle()
+                    model.clearCurrentShuffle()
                 } label: {
                     HStack(spacing: 3) {
                         Image(systemName: "shuffle")
@@ -68,23 +68,23 @@ struct ShelfView: View {
 
             Spacer(minLength: 12)
             ShelfSearchField(model: model)
-            if !model.isBrowsingPlaylists {
             Menu {
-                Button("Shuffle again") { model.shuffle() }
-                Button("Newest first") { model.clearShuffle() }
-                    .disabled(!model.isShuffled)
+                Button("Shuffle again") { model.shuffleCurrent() }
+                Button("Newest first") { model.clearCurrentShuffle() }
+                    .disabled(!model.isCurrentListShuffled)
             } label: {
                 Image(systemName: "shuffle")
                     .font(.system(size: 11, weight: .semibold))
             } primaryAction: {
-                model.shuffle()
+                model.shuffleCurrent()
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .foregroundStyle(model.isShuffled ? Theme.accent : Color.secondary)
-            .help("Shuffle these videos — click again for a new order")
-            }
+            .foregroundStyle(model.isCurrentListShuffled ? Theme.accent : Color.secondary)
+            .help(model.isBrowsingPlaylists
+                  ? "Shuffle the catalog — click again for a new order"
+                  : "Shuffle these videos — click again for a new order")
             if !model.isBrowsingPlaylists, !model.visibleVideos.isEmpty {
                 Button {
                     if let first = model.visibleVideos.first {

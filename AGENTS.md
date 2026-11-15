@@ -121,6 +121,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - **Large imports are sequential.** Each item gets a category suggestion; with the
   on-device model enabled, 100 items can take a while. The sheet stays disabled
   while it runs. Do not parallelise model calls without rate thinking.
+- **The catalog has its own shuffle seed.** `playlistShuffleSeed` is independent of
+  the video `shuffleSeed`; `shuffleCurrent()`/`clearCurrentShuffle()` dispatch on
+  the visible mode. Do not merge them — switching panes would silently reorder the
+  other list.
 - **Shuffle is seeded, never `shuffled()` in a view.** `SeededShuffle` with a
   stored seed keeps the order stable across renders and pages; clicking stores a
   new seed. The deck must keep receiving `visibleVideos` so its order matches the

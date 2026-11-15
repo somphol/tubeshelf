@@ -48,11 +48,13 @@ struct TubeShelfApp: App {
                 }
                 .keyboardShortcut("k", modifiers: [.command, .shift])
 
-                Button("Shuffle Videos") {
-                    model.shuffle()
+                Button("Shuffle") {
+                    model.shuffleCurrent()
                 }
                 .keyboardShortcut("r", modifiers: [.command])
-                .disabled(model.visibleVideos.isEmpty)
+                .disabled(model.isBrowsingPlaylists
+                          ? model.visiblePlaylists.isEmpty
+                          : model.visibleVideos.isEmpty)
 
                 Button("Search Videos") {
                     model.focusSearch()

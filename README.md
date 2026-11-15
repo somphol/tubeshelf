@@ -129,10 +129,11 @@ categories and note arrive prefilled, **Update video** saves changes in place, a
 
 ## Shuffle and watch state
 
-**Shuffle** (the shuffle button, or **⌘R**) reorders the current category
-randomly — and every click gives a fresh order, which is the point: it resurfaces
+**Shuffle** (the shuffle button, or **⌘R**) reorders the current view — videos or
+the playlist catalog — randomly — and every click gives a fresh order, which is the point: it resurfaces
 videos you filed and forgot. The order stays put while you scroll, the deck follows
-the same order, and *Newest* returns to chronological.
+the same order, and *Newest* returns to chronological. The catalog keeps its own shuffle order,
+so shuffling courses never disturbs the video grid.
 
 **Watch state** tracks `Unwatched → Watching → Watched`. The sidebar has an
 **Unwatched** filter, the deck marks a video watched in one click, and finished

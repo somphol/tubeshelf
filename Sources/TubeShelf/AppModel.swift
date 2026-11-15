@@ -51,6 +51,9 @@ final class AppModel {
     var pageIndex = 0
     /// When set, the grid and the deck use this shuffle instead of newest-first.
     var shuffleSeed: UInt64?
+    /// The catalog has its own shuffle so browsing videos and browsing courses do
+    /// not disturb each other.
+    var playlistShuffleSeed: UInt64?
     var pageSize: Int = Preferences.pageSize {
         didSet {
             Preferences.pageSize = pageSize
@@ -309,9 +312,33 @@ final class AppModel {
     /// The catalog grid honours the same search field as the shelf.
     var visiblePlaylists: [PlaylistRecord] {
         let needle = SearchText.normalize(query)
-        guard !needle.isEmpty else { return playlists }
-        return playlists.filter { record in
+        let filtered = needle.isEmpty ? playlists : playlists.filter { record in
             SearchText.matches(needle: needle, haystack: "\(record.title) \(record.channel)")
+        }
+        guard let playlistShuffleSeed else { return filtered }
+        return SeededShuffle.shuffle(filtered, seed: playlistShuffleSeed)
+    }
+
+    var isPlaylistShuffled: Bool { playlistShuffleSeed != nil }
+
+    /// Shuffle whichever list is on screen.
+    var isCurrentListShuffled: Bool {
+        isBrowsingPlaylists ? isPlaylistShuffled : isShuffled
+    }
+
+    func shuffleCurrent() {
+        if isBrowsingPlaylists {
+            playlistShuffleSeed = UInt64.random(in: 1...UInt64.max)
+        } else {
+            shuffle()
+        }
+    }
+
+    func clearCurrentShuffle() {
+        if isBrowsingPlaylists {
+            playlistShuffleSeed = nil
+        } else {
+            clearShuffle()
         }
     }
 

@@ -74,13 +74,23 @@ struct DeckView: View {
             // Leave the filmstrip and controls alone.
             guard event.locationInWindow.y > 120 else { return event }
 
-            let vertical = event.scrollingDeltaY
-            let horizontal = event.scrollingDeltaX
+            // A trackpad reports large precise deltas; a classic mouse wheel reports
+            // about one line per notch, which used to fall under the threshold.
+            let vertical = event.scrollingDeltaY != 0
+                ? event.scrollingDeltaY
+                : CGFloat(event.deltaY)
+            let horizontal = event.scrollingDeltaX != 0
+                ? event.scrollingDeltaX
+                : CGFloat(event.deltaX)
             let delta = abs(vertical) >= abs(horizontal) ? vertical : horizontal
-            guard abs(delta) > 10 else { return event }
+
+            let precise = event.hasPreciseScrollingDeltas
+            let threshold: CGFloat = precise ? 10 : 1
+            let cooldown: TimeInterval = precise ? 0.35 : 0.12
+            guard abs(delta) >= threshold else { return event }
 
             let now = Date()
-            guard now.timeIntervalSince(lastScroll) > 0.35 else { return event }
+            guard now.timeIntervalSince(lastScroll) > cooldown else { return event }
             lastScroll = now
 
             if delta < 0 {

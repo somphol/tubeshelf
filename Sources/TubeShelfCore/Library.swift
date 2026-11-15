@@ -5,6 +5,7 @@ public enum ShelfFilter: Hashable, Sendable, Codable {
     case favorites
     case unwatched
     case unsorted
+    case playlists
     case tag(String)
     case channel(String)
 
@@ -14,6 +15,7 @@ public enum ShelfFilter: Hashable, Sendable, Codable {
         case .favorites: "Favorites"
         case .unwatched: "Unwatched"
         case .unsorted: "Unsorted"
+        case .playlists: "Playlist Catalog"
         case .tag(let name): name
         case .channel(let name): name
         }
@@ -360,6 +362,9 @@ public struct Library: Codable, Equatable, Sendable {
             switch filter {
             case .all:
                 return true
+            case .playlists:
+                // Playlists are not videos; the grid shows them instead.
+                return false
             case .favorites:
                 return video.isFavorite
             case .unwatched:

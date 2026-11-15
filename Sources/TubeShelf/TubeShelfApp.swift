@@ -34,7 +34,7 @@ struct TubeShelfApp: App {
                 .keyboardShortcut("n", modifiers: [.command, .shift, .option])
 
                 Button("Open Playlist Catalog…") {
-                    model.openPlaylistCatalog()
+                    model.browsePlaylistCatalog()
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 

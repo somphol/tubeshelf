@@ -249,6 +249,17 @@ final class AppModel {
 
     var isShuffled: Bool { shuffleSeed != nil }
 
+    var isBrowsingPlaylists: Bool { filter == .playlists }
+
+    /// The catalog grid honours the same search field as the shelf.
+    var visiblePlaylists: [PlaylistRecord] {
+        let needle = SearchText.normalize(query)
+        guard !needle.isEmpty else { return playlists }
+        return playlists.filter { record in
+            SearchText.matches(needle: needle, haystack: "\(record.title) \(record.channel)")
+        }
+    }
+
     /// A new random order every click; keeping the mode on between clicks.
     func shuffle() {
         shuffleSeed = UInt64.random(in: 1...UInt64.max)
@@ -352,6 +363,9 @@ final class AppModel {
         case .unsorted: return "\(shown) without a category"
         case .tag: return "\(shown) video\(shown == 1 ? "" : "s") in this category"
         case .channel(let name): return "\(shown) video\(shown == 1 ? "" : "s") from \(name)"
+        case .playlists:
+            let chapters = playlists.reduce(0) { $0 + $1.chapterCount }
+            return "\(playlists.count) course\(playlists.count == 1 ? "" : "s") · \(chapters) chapters"
         }
     }
 
@@ -398,6 +412,10 @@ final class AppModel {
     func openPlaylistCatalog(id: String? = nil) {
         pendingPlaylistID = id
         isPlaylistCatalogPresented = true
+    }
+
+    func browsePlaylistCatalog() {
+        select(.playlists)
     }
 
     /// Saves a fetched playlist as a course. Re-adding updates the chapter list

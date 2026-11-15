@@ -37,7 +37,20 @@ struct ShelfView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            if model.isShuffled {
+            if model.isBrowsingPlaylists {
+                Button {
+                    model.isAddPlaylistToCatalogPresented = true
+                } label: {
+                    Label("Add Playlist", systemImage: "plus")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .controlSize(.small)
+                .fixedSize()
+            }
+
+            if !model.isBrowsingPlaylists, model.isShuffled {
                 Button {
                     model.clearShuffle()
                 } label: {
@@ -55,6 +68,7 @@ struct ShelfView: View {
 
             Spacer(minLength: 12)
             ShelfSearchField(model: model)
+            if !model.isBrowsingPlaylists {
             Menu {
                 Button("Shuffle again") { model.shuffle() }
                 Button("Newest first") { model.clearShuffle() }
@@ -70,7 +84,8 @@ struct ShelfView: View {
             .fixedSize()
             .foregroundStyle(model.isShuffled ? Theme.accent : Color.secondary)
             .help("Shuffle these videos — click again for a new order")
-            if !model.visibleVideos.isEmpty {
+            }
+            if !model.isBrowsingPlaylists, !model.visibleVideos.isEmpty {
                 Button {
                     if let first = model.pagedVideos.first ?? model.visibleVideos.first {
                         model.openDeck(startAt: first)
@@ -98,6 +113,7 @@ struct ShelfView: View {
         case .favorites: "star"
         case .unwatched: "eye.slash"
         case .unsorted: "tray"
+        case .playlists: "list.bullet.rectangle"
         case .tag(let name): TagTaxonomy.symbol(for: name)
         case .channel: "person.2"
         }
@@ -105,7 +121,9 @@ struct ShelfView: View {
 
     @ViewBuilder
     private var content: some View {
-        if model.visibleVideos.isEmpty {
+        if model.isBrowsingPlaylists {
+            playlistGrid
+        } else if model.visibleVideos.isEmpty {
             emptyState
         } else {
             ScrollViewReader { proxy in
@@ -211,6 +229,41 @@ struct ShelfView: View {
             .padding(.horizontal, 22)
             .padding(.vertical, 9)
             .background(.bar)
+        }
+    }
+
+    @ViewBuilder
+    private var playlistGrid: some View {
+        if model.visiblePlaylists.isEmpty {
+            if model.isSearching {
+                EmptyStateView(
+                    symbol: "magnifyingglass",
+                    title: "No playlist matches “\(model.query)”",
+                    message: "Search covers playlist titles and channels.",
+                    primaryTitle: "Clear search",
+                    primaryAction: { model.query = "" }
+                )
+            } else {
+                EmptyStateView(
+                    symbol: "list.bullet.rectangle.portrait",
+                    title: "No playlists yet",
+                    message: "Keep a public or unlisted playlist as a course: chapters stay in order, and no videos are added. Add chapters later whenever you want.",
+                    primaryTitle: "Add a Playlist…",
+                    primaryAction: { model.isAddPlaylistToCatalogPresented = true },
+                    secondaryTitle: "Browse videos",
+                    secondaryAction: { model.select(.all) }
+                )
+            }
+        } else {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 18) {
+                    ForEach(model.visiblePlaylists) { record in
+                        PlaylistCard(record: record, model: model)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 18)
+            }
         }
     }
 
@@ -503,5 +556,95 @@ struct ShelfSearchField: View {
 
     private var placeholder: String {
         model.searchScope == .titles ? "Search video titles" : "Search everything"
+    }
+}
+
+
+struct PlaylistCard: View {
+    let record: PlaylistRecord
+    let model: AppModel
+
+    @State private var hovering = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            ThumbnailView(videoID: record.coverVideoID ?? "", cornerRadius: Theme.mediaRadius)
+                .overlay(alignment: .bottomTrailing) {
+                    Text("\(record.chapterCount) chapters")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+                        .foregroundStyle(.white)
+                        .padding(7)
+                }
+                .overlay {
+                    if hovering {
+                        ZStack {
+                            Circle().fill(.black.opacity(0.5)).frame(width: 42, height: 42)
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(.white)
+                                .offset(x: 1)
+                        }
+                    }
+                }
+
+            Text(record.title)
+                .font(.system(size: 12.5, weight: .semibold))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(record.channel.isEmpty ? "Playlist" : record.channel)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            HStack(spacing: 6) {
+                Capsule()
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(height: 3)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { geo in
+                            Capsule()
+                                .fill(Theme.accent)
+                                .frame(width: max(0, geo.size.width * record.progress))
+                        }
+                    }
+                    .frame(height: 3)
+                Text("\(record.watchedCount)/\(record.chapterCount)")
+                    .font(.system(size: 9.5).monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(9)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                .fill(Theme.surface(scheme))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                .strokeBorder(Theme.hairline(scheme), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(hovering ? 0.16 : 0.06), radius: hovering ? 12 : 4, y: hovering ? 6 : 2)
+        .scaleEffect(hovering ? 1.012 : 1)
+        .animation(.easeOut(duration: 0.16), value: hovering)
+        .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+        .onTapGesture { model.openPlaylistCatalog(id: record.id) }
+        .onHover { hovering = $0 }
+        .help("\(record.title) · \(record.watchedCount) of \(record.chapterCount) watched")
+        .contextMenu {
+            Button("Open course") { model.openPlaylistCatalog(id: record.id) }
+            Button("Open on YouTube") {
+                if let url = record.shareURL { NSWorkspace.shared.open(url) }
+            }
+            Divider()
+            Button("Remove from catalog", role: .destructive) {
+                model.removePlaylist(id: record.id)
+            }
+        }
     }
 }

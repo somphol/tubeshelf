@@ -148,8 +148,9 @@ Two independent actions, both in the toolbar's playlist menu and the File menu:
 - **Add Playlist to Catalog…** (**⇧⌘⌥N**) — keep a public or unlisted playlist as a
   *course*: title, channel and ordered chapters. Adds no videos.
 
-The catalog (**⌘⇧L**, or the Playlists section in the sidebar) is a shelf of
-courses. Each entry keeps its chapter order offline, shows `3 / 16` progress, and
+The catalog is a first-class row under **Library** — *Playlist Catalog* — and the
+main pane shows playlists as thumbnail cards with chapter counts and progress
+(**⌘⇧L** jumps there). Each entry keeps its chapter order offline, shows `3 / 16` progress, and
 opens a detail view where you can tick chapters, add a single chapter with its
 **+** button (the category editor appears first), use **Add missing to Shelf**
 (the bulk review sheet for that playlist), **Present** the chapters you already

@@ -70,6 +70,13 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(library.video(youtubeID: "aaaaaaaaaaa")?.tags, ["Cooking"])
     }
 
+    func testPlaylistFilterIsAViewModeNotAVideoFilter() {
+        var library = Library()
+        library.add(makeVideo(id: "aaaaaaaaaaa", title: "A"))
+        XCTAssertTrue(library.videos(filter: .playlists).isEmpty)
+        XCTAssertEqual(library.videos(filter: .all).count, 1)
+    }
+
     func testWatchStatusFiltersAndCounts() {
         var library = Library()
         library.add(makeVideo(id: "aaaaaaaaaaa", title: "A"))

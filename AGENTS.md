@@ -88,6 +88,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **`.playlists` is a shelf mode, not a video filter.** `ShelfFilter.playlists`
+  makes `Library.videos` return nothing and swaps the pane for the playlist grid;
+  never send it through the deck, pager or shuffle, and keep the sidebar row under
+  Library.
 - **Buttons on a catalog playlist must name their destination.** "Add missing to
   Shelf" and the per-chapter **+** both write to the shelf (after category review);
   nothing in the catalog detail adds to the catalog. Keep that wording explicit.

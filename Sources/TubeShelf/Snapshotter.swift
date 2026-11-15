@@ -51,7 +51,7 @@ enum Snapshotter {
             case "playlist":
                 model.playlistImportPrefill = SnapshotConfig.playlistPrefill
                 model.isPlaylistImportPresented = true
-            case "catalog", "catalog-detail":
+            case "playlist-grid", "catalog", "catalog-detail":
                 let items = (0..<16).map { index in
                     PlaylistItem(
                         videoID: String(format: "vid%08d", index),
@@ -73,7 +73,25 @@ enum Snapshotter {
                         model.toggleChapter(playlistID: record.id, videoID: id)
                     }
                 }
-                model.openPlaylistCatalog(id: mode == "catalog-detail" ? record.id : nil)
+                if mode == "playlist-grid" {
+                    let calculusItems = (0..<12).map { index in
+                        PlaylistItem(
+                            videoID: String(format: "vid%08d", index + 100),
+                            title: "Chapter \(index + 1) · Essence of calculus",
+                            channel: "3Blue1Brown",
+                            durationSeconds: 700 + index * 90
+                        )
+                    }
+                    model.catalogPlaylist(PlaylistMetadata(
+                        playlistID: "PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+                        title: "Essence of calculus",
+                        items: calculusItems,
+                        truncated: false
+                    ))
+                    model.browsePlaylistCatalog()
+                } else {
+                    model.openPlaylistCatalog(id: mode == "catalog-detail" ? record.id : nil)
+                }
 
             case "playlist-editor":
                 let item = PlaylistItem(

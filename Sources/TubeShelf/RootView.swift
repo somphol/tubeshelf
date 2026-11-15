@@ -29,7 +29,7 @@ struct RootView: View {
                         Button("Add Videos from Playlist…") { model.openPlaylistImport() }
                         Button("Add Playlist to Catalog…") { model.isAddPlaylistToCatalogPresented = true }
                         Divider()
-                        Button("Open Playlist Catalog…") { model.openPlaylistCatalog() }
+                        Button("Open Playlist Catalog…") { model.browsePlaylistCatalog() }
                     } label: {
                         Label("Playlists", systemImage: "list.bullet.rectangle")
                     }
@@ -169,6 +169,7 @@ struct SidebarView: View {
                     row(.all, symbol: "rectangle.stack", title: "All videos", count: model.library.count)
                     row(.favorites, symbol: "star", title: "Favorites", count: model.library.favoritesCount)
                     row(.unwatched, symbol: "eye.slash", title: "Unwatched", count: model.library.unwatchedCount)
+                    row(.playlists, symbol: "list.bullet.rectangle", title: "Playlist Catalog", count: model.playlists.count)
                     row(.unsorted, symbol: "tray", title: "Unsorted", count: model.library.unsortedCount)
                 }
 
@@ -183,51 +184,6 @@ struct SidebarView: View {
                                 .font(.system(size: 9, weight: .semibold))
                             Text("Pinned")
                             Spacer(minLength: 0)
-                        }
-                    }
-                }
-
-                if !model.playlists.isEmpty {
-                    Section {
-                        ForEach(model.playlists.prefix(5)) { record in
-                            Button {
-                                model.openPlaylistCatalog(id: record.id)
-                            } label: {
-                                HStack(spacing: 7) {
-                                    Image(systemName: "list.bullet.rectangle")
-                                        .font(.system(size: 11))
-                                        .frame(width: 17)
-                                        .foregroundStyle(.secondary)
-                                    Text(record.title)
-                                        .font(.system(size: 12.5))
-                                        .lineLimit(1)
-                                    Spacer(minLength: 4)
-                                    Text("\(record.chapterCount)")
-                                        .font(.system(size: 10.5).monospacedDigit())
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .padding(.vertical, 2)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .help(record.title)
-                        }
-                    } header: {
-                        HStack(spacing: 4) {
-                            Text("Playlists")
-                            Spacer(minLength: 0)
-                            Button {
-                                model.openPlaylistCatalog()
-                            } label: {
-                                HStack(spacing: 2) {
-                                    Text("All \(model.playlists.count)")
-                                        .font(.system(size: 9.5, weight: .medium))
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 7, weight: .bold))
-                                }
-                            }
-                            .buttonStyle(.link)
-                            .help("Open the playlist catalog")
                         }
                     }
                 }

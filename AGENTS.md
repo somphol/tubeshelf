@@ -13,7 +13,7 @@ It is not a YouTube client: no login, no feed, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 150 unit tests
+swift test                                   # 151 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch

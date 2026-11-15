@@ -2,6 +2,14 @@ import SwiftUI
 import Observation
 import TubeShelfCore
 
+/// State of the opt-in local model server, shown in Settings.
+enum LocalAIState: Equatable {
+    case idle
+    case checking
+    case reachable([String])
+    case unreachable(String)
+}
+
 /// One cell in the shelf grid: a video, or a course in a category view.
 extension ShelfItem {
     var deckSlide: DeckSlide {
@@ -69,7 +77,14 @@ final class AppModel {
     }
 
     var localAIEnabled: Bool = Preferences.localAIEnabled {
-        didSet { Preferences.localAIEnabled = localAIEnabled }
+        didSet {
+            Preferences.localAIEnabled = localAIEnabled
+            if localAIEnabled {
+                Task { await checkLocalAI() }
+            } else {
+                localAIState = .idle
+            }
+        }
     }
     var localAIURL: String = Preferences.localAIURL {
         didSet { Preferences.localAIURL = localAIURL }
@@ -77,6 +92,7 @@ final class AppModel {
     var localAIModel: String = Preferences.localAIModel {
         didSet { Preferences.localAIModel = localAIModel }
     }
+    var localAIState: LocalAIState = .idle
     /// nil unless a server is enabled and its URL is usable.
     var localAIConfig: LocalAIConfig? {
         guard localAIEnabled else { return nil }
@@ -84,6 +100,21 @@ final class AppModel {
         guard !url.isEmpty else { return nil }
         let model = localAIModel.trimmingCharacters(in: .whitespacesAndNewlines)
         return LocalAIConfig(baseURL: url, model: model.isEmpty ? "system" : model)
+    }
+
+    /// A visible answer to "is the server still running after a restart?".
+    func checkLocalAI() async {
+        guard let config = localAIConfig else {
+            localAIState = .idle
+            return
+        }
+        localAIState = .checking
+        do {
+            let models = try await LocalAIClient(config: config).models()
+            localAIState = .reachable(models)
+        } catch {
+            localAIState = .unreachable(error.localizedDescription)
+        }
     }
     var isAddPlaylistToCatalogPresented = false
     /// Debug snapshot hook: opens the catalog sheet with a playlist ready.

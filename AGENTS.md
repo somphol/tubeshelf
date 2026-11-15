@@ -21,6 +21,7 @@ swift run tubeshelf-check --pin <category>   # pin / unpin / merge from the CLI
 swift run tubeshelf-check --merge A B
 CONFIG=release ./scripts/build-app.sh        # dist/TubeShelf.app (ad-hoc signed)
 ./scripts/verify.sh                          # tests + checks + bundle + signature
+./scripts/install-fm-serve-agent.sh          # optional: fm serve at login (system model)
 open dist/TubeShelf.app
 ```
 
@@ -259,7 +260,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   and inventions, while guest/format extras stay deterministic. `fm serve`,
   Ollama and LM Studio all speak this protocol. Verify headlessly with
   `TUBESHELF_AI_URL=http://127.0.0.1:1976/v1 swift run tubeshelf-check --fetch <link>`
-  and expect `[Local AI]`.
+  and expect `[Local AI]`. Settings shows a **Check server** result, because a
+  foreground `fm serve` does not survive a restart. For persistence use
+  `scripts/install-fm-serve-agent.sh` (system model only) or `brew services start
+  ollama`. PCC refuses to run outside Terminal.app, so it cannot be a LaunchAgent.
 - **Persisted JSON is tolerant**: new fields use `decodeIfPresent`, dates are
   truncated to whole seconds for exact round-trips, and a corrupt file is moved
   aside, never overwritten.

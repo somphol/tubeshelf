@@ -338,7 +338,10 @@ swift run tubeshelf-check --help                 # every flag
   `fm models` shows when it is ready.
 - The optional local-server path is verified against a stub Chat Completions
   endpoint, not against a live model. In Settings, point it at
-  `http://127.0.0.1:1976/v1` (`fm serve`) or `http://127.0.0.1:11434/v1` (Ollama).
+  `http://127.0.0.1:1976/v1` (`fm serve`) or `http://127.0.0.1:11434/v1` (Ollama),
+  then use **Check server**. A foreground `fm serve` stops at restart; run
+  `./scripts/install-fm-serve-agent.sh` to start it at login (system model only),
+  or use `brew services start ollama`. PCC only runs inside Terminal.app.
 - No OAuth, so the app cannot read your subscriptions or playlists; it only sees
   links you paste.
 - Playback always opens YouTube. The embedded player returns errors 152/153 in

@@ -72,14 +72,38 @@ public struct LocalAIClient: Sendable {
         self.session = session
     }
 
+    /// Lists the server's models without generating anything. Used by the
+    /// Settings check so a stopped server is visible before it silently falls
+    /// back to keywords.
+    public func models() async throws -> [String] {
+        guard let endpoint = config.endpointURL,
+              let modelsURL = URL(string: endpoint.absoluteString.replacingOccurrences(
+                  of: "/chat/completions",
+                  with: "/models"
+              ))
+        else { throw LocalAIError.badURL }
+
+        var request = URLRequest(url: modelsURL)
+        request.timeoutInterval = 4
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw LocalAIError.emptyAnswer }
+        guard (200..<300).contains(http.statusCode) else { throw LocalAIError.http(http.statusCode) }
+
+        struct Models: Decodable {
+            struct Model: Decodable { let id: String }
+            let data: [Model]
+        }
+        let decoded = try JSONDecoder().decode(Models.self, from: data)
+        return decoded.data.map(\.id)
+    }
+
     public func suggest(
         title: String,
         channel: String,
         description: String,
         knownCategories: [String],
         limit: Int = 3
-    ) async throws -> [String] {
-        guard let url = config.endpointURL else { throw LocalAIError.badURL }
+    ) async throws -> [String] {        guard let url = config.endpointURL else { throw LocalAIError.badURL }
 
         let allowed = (TagTaxonomy.names + knownCategories)
             .uniquedCaseInsensitive()

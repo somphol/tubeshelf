@@ -141,6 +141,38 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private var localAIStatusLine: some View {
+        switch model.localAIState {
+        case .idle:
+            Text("Not checked")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+        case .checking:
+            HStack(spacing: 4) {
+                ProgressView().controlSize(.mini)
+                Text("Checking…")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+        case .reachable(let models):
+            HStack(spacing: 4) {
+                Circle().fill(Color.green).frame(width: 6, height: 6)
+                Text(models.isEmpty ? "Reachable" : "Reachable · " + models.prefix(3).joined(separator: ", "))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+        case .unreachable(let message):
+            HStack(spacing: 4) {
+                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                Text("Not reachable · \(message)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
@@ -214,9 +246,20 @@ struct SettingsView: View {
                     .frame(width: 100)
                 }
                 .disabled(!model.localAIEnabled)
-                Text("fm serve defaults to port 1976; Ollama to 11434/v1 (model qwen2.5:3b).")
+                HStack(spacing: 6) {
+                    Button("Check server") {
+                        Task { await model.checkLocalAI() }
+                    }
+                    .buttonStyle(.link)
+                    .font(.system(size: 10.5))
+                    .disabled(!model.localAIEnabled)
+                    localAIStatusLine
+                    Spacer(minLength: 0)
+                }
+                Text("Port 1976 for fm serve, 11434/v1 for Ollama. Servers stop at restart: install scripts/install-fm-serve-agent.sh or use brew services.")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()
@@ -304,7 +347,12 @@ struct SettingsView: View {
             Spacer(minLength: 0)
         }
         .padding(20)
-        .frame(width: 460, height: 560)
+        .frame(width: 460, height: 645)
+        .onAppear {
+            if model.localAIEnabled {
+                Task { await model.checkLocalAI() }
+            }
+        }
         .alert("Remove all \(model.library.count) videos?", isPresented: $confirmReset) {
             Button("Cancel", role: .cancel) {}
             Button("Remove all", role: .destructive) {

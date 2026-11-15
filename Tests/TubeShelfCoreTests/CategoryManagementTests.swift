@@ -132,6 +132,36 @@ final class CategoryManagementTests: XCTestCase {
         XCTAssertEqual(library.pinnedTags, ["Cooking", "C++"])
     }
 
+    func testChannelPinsRoundTripAndPrune() throws {
+        var shelf = Library()
+        shelf.add(Video(youtubeID: "aaaaaaaaaaa", title: "Lecture", channel: "Stanford Online"))
+        shelf.add(Video(youtubeID: "bbbbbbbbbbb", title: "Vectors", channel: "3Blue1Brown"))
+
+        XCTAssertTrue(shelf.toggleChannelPin("stanford online"))
+        XCTAssertEqual(shelf.pinnedChannels, ["stanford online"], "first spelling wins")
+        XCTAssertEqual(shelf.pinnedChannelCounts.map(\.name), ["Stanford Online"], "display uses the video spelling")
+        XCTAssertTrue(shelf.isChannelPinned("STANFORD ONLINE"))
+
+        shelf.pinChannel("3Blue1Brown")
+        shelf.pinChannel("3blue1brown")
+        XCTAssertEqual(shelf.pinnedChannels, ["stanford online", "3Blue1Brown"])
+
+        shelf.retainChannelPins(among: ["3blue1brown"])
+        XCTAssertEqual(shelf.pinnedChannels, ["3Blue1Brown"])
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tubeshelf-channel-pin-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LibraryStore(directory: directory)
+        try store.save(shelf)
+        XCTAssertEqual(try store.load().pinnedChannels, ["3Blue1Brown"])
+
+        let legacy = #"{"videos":[]}"#
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        XCTAssertEqual(try decoder.decode(Library.self, from: Data(legacy.utf8)).pinnedChannels, [])
+    }
+
     func testTitleOnlySearchIgnoresCategoriesAndNotes() {
         var shelf = Library()
         shelf.add(Video(

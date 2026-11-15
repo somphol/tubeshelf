@@ -190,10 +190,13 @@ struct SidebarView: View {
                     row(.unsorted, symbol: "tray", title: "Unsorted", count: model.library.unsortedCount)
                 }
 
-                if model.hasPinnedCategories {
+                if model.hasPinnedItems {
                     Section {
                         ForEach(model.pinnedTagCounts) { tag in
                             categoryRow(tag, isPinned: true)
+                        }
+                        ForEach(model.pinnedChannelCounts) { channel in
+                            channelRow(channel, isPinned: true)
                         }
                     } header: {
                         HStack(spacing: 5) {
@@ -208,22 +211,7 @@ struct SidebarView: View {
                 if !model.sidebarChannels.isEmpty {
                     Section {
                         ForEach(model.sidebarChannels) { channel in
-                            ChannelSidebarRow(
-                                name: channel.name,
-                                count: channel.count,
-                                isSelected: model.filter == .channel(channel.name),
-                                onPresent: { model.openDeckForChannel(channel.name) }
-                            )
-                            .contextMenu {
-                                Button("Show these videos") { model.showChannel(channel.name) }
-                                Button("Present as slide deck") { model.openDeckForChannel(channel.name) }
-                                Divider()
-                                Button("Browse all channels…") { model.openChannelBrowser() }
-                                Button("Copy channel name") {
-                                    NSPasteboard.general.clearContents()
-                                    NSPasteboard.general.setString(channel.name, forType: .string)
-                                }
-                            }
+                            channelRow(channel, isPinned: false)
                         }
                     } header: {
                         HStack(spacing: 4) {
@@ -470,6 +458,28 @@ struct SidebarView: View {
             Divider()
             Button("Delete category from all videos", role: .destructive) {
                 dialog = .delete(tag.name)
+            }
+        }
+    }
+
+    private func channelRow(_ channel: TagCount, isPinned: Bool) -> some View {
+        ChannelSidebarRow(
+            name: channel.name,
+            count: channel.count,
+            isSelected: model.filter == .channel(channel.name),
+            onPresent: { model.openDeckForChannel(channel.name) }
+        )
+        .contextMenu {
+            Button(isPinned ? "Unpin channel" : "Pin channel") {
+                model.toggleChannelPin(channel.name)
+            }
+            Button("Present as slide deck") { model.openDeckForChannel(channel.name) }
+            Divider()
+            Button("Show these videos") { model.showChannel(channel.name) }
+            Button("Browse all channels…") { model.openChannelBrowser() }
+            Button("Copy channel name") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(channel.name, forType: .string)
             }
         }
     }

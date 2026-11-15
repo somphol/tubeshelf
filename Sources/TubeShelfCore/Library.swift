@@ -74,15 +74,20 @@ public struct Library: Codable, Equatable, Sendable {
     public private(set) var videos: [Video]
     /// Category names pinned to the top of the sidebar, in pin order.
     public private(set) var pinnedTags: [String]
+    /// Channel names pinned beside them. Channels keep YouTube's spelling, so
+    /// these are not passed through the tag normaliser.
+    public private(set) var pinnedChannels: [String]
 
-    public init(videos: [Video] = [], pinnedTags: [String] = []) {
+    public init(videos: [Video] = [], pinnedTags: [String] = [], pinnedChannels: [String] = []) {
         self.videos = videos
         self.pinnedTags = TagNormalizer.merge(pinnedTags)
+        self.pinnedChannels = Self.normalizedChannelPins(pinnedChannels)
     }
 
     private enum CodingKeys: String, CodingKey {
         case videos
         case pinnedTags
+        case pinnedChannels
     }
 
     // Older library files have no `pinnedTags` key; they still open.
@@ -92,12 +97,33 @@ public struct Library: Codable, Equatable, Sendable {
         self.pinnedTags = TagNormalizer.merge(
             try container.decodeIfPresent([String].self, forKey: .pinnedTags) ?? []
         )
+        self.pinnedChannels = Self.normalizedChannelPins(
+            try container.decodeIfPresent([String].self, forKey: .pinnedChannels) ?? []
+        )
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(videos, forKey: .videos)
         try container.encode(pinnedTags, forKey: .pinnedTags)
+        try container.encode(pinnedChannels, forKey: .pinnedChannels)
+    }
+
+    /// Trim, collapse spaces and drop case-insensitive duplicates while keeping
+    /// the first spelling. A channel rename is a new pin, not a rewrite.
+    private static func normalizedChannelPins(_ raw: [String]) -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for name in raw {
+            let cleaned = name
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            guard !cleaned.isEmpty else { continue }
+            let key = cleaned.lowercased()
+            guard seen.insert(key).inserted else { continue }
+            out.append(cleaned)
+        }
+        return out
     }
 
     public var isEmpty: Bool { videos.isEmpty }
@@ -308,6 +334,46 @@ public struct Library: Codable, Equatable, Sendable {
         let pinnedKeys = Set(pinnedTags.map { $0.lowercased() })
         let rest = rawTagCounts().filter { !pinnedKeys.contains($0.name.lowercased()) }
         return Self.sort(rest, by: sort, ascending: ascending)
+    }
+
+    // MARK: - Channel pinning
+
+    public func isChannelPinned(_ channel: String) -> Bool {
+        pinnedChannels.contains { $0.caseInsensitiveCompare(channel) == .orderedSame }
+    }
+
+    public mutating func pinChannel(_ channel: String) {
+        let cleaned = channel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty, !isChannelPinned(cleaned) else { return }
+        pinnedChannels.append(cleaned)
+    }
+
+    public mutating func unpinChannel(_ channel: String) {
+        pinnedChannels.removeAll { $0.caseInsensitiveCompare(channel) == .orderedSame }
+    }
+
+    /// Returns the new pinned state.
+    @discardableResult
+    public mutating func toggleChannelPin(_ channel: String) -> Bool {
+        if isChannelPinned(channel) {
+            unpinChannel(channel)
+            return false
+        }
+        pinChannel(channel)
+        return true
+    }
+
+    /// Drops channel pins whose channel no longer has a video.
+    public mutating func retainChannelPins(among validNames: Set<String>) {
+        pinnedChannels.removeAll { !validNames.contains($0.lowercased()) }
+    }
+
+    /// Pinned channels in the order they were pinned, skipping empty ones.
+    public var pinnedChannelCounts: [TagCount] {
+        let counts = channelCounts()
+        return pinnedChannels.compactMap { pin in
+            counts.first { $0.name.caseInsensitiveCompare(pin) == .orderedSame }
+        }
     }
 
     private func rawTagCounts() -> [TagCount] {

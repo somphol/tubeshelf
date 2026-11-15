@@ -474,17 +474,29 @@ final class AppModel {
         return matchingSidebarQuery(rest)
     }
 
-    /// Pins are valid if any video *or course* still carries the category.
+    /// Pinned channels keep pin order, then respect the sidebar filter.
+    var pinnedChannelCounts: [TagCount] {
+        matchingSidebarQuery(library.pinnedChannelCounts)
+    }
+
+    /// Pins are valid if any video *or course* still carries the category, and if
+    /// a pinned channel still has at least one video.
     private func prunePins() {
         library.retainPins(among: Set(combinedTagCounts.map { $0.name.lowercased() }))
+        library.retainChannelPins(among: Set(library.channelCounts().map { $0.name.lowercased() }))
     }
 
     var hasPinnedCategories: Bool { !pinnedTagCounts.isEmpty }
+    var hasPinnedChannels: Bool { !pinnedChannelCounts.isEmpty }
+    var hasPinnedItems: Bool { hasPinnedCategories || hasPinnedChannels }
 
-    /// What the sidebar shows: the biggest channels, plus whichever channel is
-    /// currently selected even if it is not in the top few.
+    /// What the sidebar shows: the biggest unpinned channels, plus whichever
+    /// channel is currently selected even if it is not in the top few. A pinned
+    /// channel is drawn in the Pinned section instead, so it must not repeat here.
     var sidebarChannels: [TagCount] {
+        let pinnedKeys = Set(library.pinnedChannels.map { $0.lowercased() })
         let all = library.channelCounts(sortedBy: .mostVideos)
+            .filter { !pinnedKeys.contains($0.name.lowercased()) }
         let trimmed = sidebarQuery.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if !trimmed.isEmpty {
@@ -494,6 +506,7 @@ final class AppModel {
 
         var picks = Array(all.prefix(5))
         if let active = filter.channelName,
+           !pinnedKeys.contains(active.lowercased()),
            !picks.contains(where: { $0.name.caseInsensitiveCompare(active) == .orderedSame }),
            let match = all.first(where: { $0.name.caseInsensitiveCompare(active) == .orderedSame }) {
             picks.insert(match, at: 0)
@@ -997,6 +1010,12 @@ final class AppModel {
 
     func togglePin(_ name: String) {
         let isPinned = library.togglePin(name)
+        save()
+        flash(isPinned ? "Pinned \(name)" : "Unpinned \(name)")
+    }
+
+    func toggleChannelPin(_ name: String) {
+        let isPinned = library.toggleChannelPin(name)
         save()
         flash(isPinned ? "Pinned \(name)" : "Unpinned \(name)")
     }

@@ -162,6 +162,8 @@ struct ShelfView: View {
             Button("Done") { model.exitSelection() }
                 .buttonStyle(.link)
                 .font(.system(size: 10.5))
+                .keyboardShortcut(.cancelAction)
+                .help("Exit selection (esc)")
         }
         .sheet(isPresented: Binding(
             get: { model.isBulkAddPresented },

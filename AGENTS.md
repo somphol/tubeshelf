@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 127 unit tests
+swift test                                   # 128 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -99,6 +99,8 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   and courses are non-selectable. The undo snapshot lives in `AppModel.pendingUndo`
   and is captured before every bulk tag/favorite/watched change; removal is
   confirmed and not undoable. Do not keep a selection across filter changes.
+  Esc is bound to the header's Done button (`.cancelAction`), so leaving the mode
+  does not require aiming at a link.
 - **The Tidy panel is advisory.** `CategoryAudit` only proposes merges, lonely
   categories and catch-alls; every change goes through the normal
   `mergeCategories` / `deleteTag` paths with a confirmation.
@@ -212,10 +214,16 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **Categories are derived, never empty.** A category exists only while a video
   carries it, so there is no "create empty category" path. Pins are pruned on load
   and on every save; do not let an orphaned pin reach disk.
-- **`Library` owns pins; `UserDefaults` owns view preferences.** `pinnedTags`
-  lives in `library.json` because it is user data worth backing up. Sort order and
-  search scope are interface state in `UserDefaults` (`Preferences`), never in the
-  library file.
+- **`Library` owns pins; `UserDefaults` owns view preferences.** `pinnedTags` and
+  `pinnedChannels` live in `library.json` because they are user data worth backing
+  up. Sort order and search scope are interface state in `UserDefaults`
+  (`Preferences`), never in the library file.
+- **Channel pins are names, not IDs.** `pinnedChannels` keeps YouTube's spelling and
+  dedupes case-insensitively; a rename is a new pin. Pinned channels render in the
+  same Pinned section as categories and are excluded from the Channels list, and
+  `prunePins()` drops one when no video carries that channel. Do not route channel
+  names through `TagNormalizer`; it capitalises categories and would rewrite a
+  channel's styling.
 - **Merging is a rename that also absorbs.** `mergeTags(_:into:)` moves every
   video, dedupes, removes the source and transfers the pin in one operation. The
   manager confirms before running it; the sidebar deliberately has no one-click

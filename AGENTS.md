@@ -206,9 +206,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   `~/Library/CloudStorage/GoogleDrive-*/My Drive`; the button writes
   `TubeShelf Backups/<timestamped>.json` there. No OAuth, no tokens, no network
   code. Never invent a Drive path outside CloudStorage, and never fall back to a
-  silent local folder when the drive is missing. The editable web app reuses this
-  folder in Automatic mode (full Drive scope) because `drive.file` may not list
-  Mac-created files; keep the folder name and one writer at a time. Web setup:
+  silent local folder when the drive is missing. The editable web app uses
+  the same folder directly through File System Access when Drive for Desktop is
+  signed in on the workstation (no OAuth, no Cloud project); Google sign-in is an
+  advanced alternative. Keep the folder name and one writer at a time. Web setup:
   its `DRIVE.md`.
 - **Backups exclude thumbnails on purpose.** They rebuild from YouTube, and
   including them would turn a 40 KB file into hundreds of megabytes.

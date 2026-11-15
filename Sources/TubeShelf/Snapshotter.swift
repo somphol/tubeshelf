@@ -131,6 +131,29 @@ enum Snapshotter {
                     model.deck?.jump(to: "p-\(record.id)")
                 }
 
+            case "select":
+                let seeds: [(String, String, [String])] = [
+                    ("vid00000201", "Linear algebra, chapter one", ["Math"]),
+                    ("vid00000202", "Linear algebra, chapter two", ["Math"]),
+                    ("vid00000203", "Sourdough starter", ["Cooking"]),
+                    ("vid00000204", "Knife skills", ["Cooking"]),
+                    ("vid00000205", "Neural networks", ["AI & Machine Learning"]),
+                    ("vid00000206", "Gradient descent", ["AI & Machine Learning"])
+                ]
+                for (id, title, tags) in seeds {
+                    model.add(Video(
+                        youtubeID: id,
+                        title: title,
+                        channel: "Demo Channel",
+                        tags: tags,
+                        durationSeconds: 420
+                    ))
+                }
+                model.isSelecting = true
+                for video in model.visibleVideos.prefix(3) {
+                    model.selectedVideoIDs.insert(video.id)
+                }
+
             case "tidy":
                 let seeds: [(String, String, [String])] = [
                     ("vid00000101", "Car review: the new one", ["Cars"]),

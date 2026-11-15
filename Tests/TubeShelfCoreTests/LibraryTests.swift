@@ -149,3 +149,52 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(library.video(id: id)?.tags, ["Design", "AI"])
     }
 }
+
+
+final class BulkEditTests: XCTestCase {
+    private func shelf() -> Library {
+        var library = Library()
+        library.add(Video(youtubeID: "aaaaaaaaaaa", title: "A", channel: "C", tags: ["Math"]))
+        library.add(Video(youtubeID: "bbbbbbbbbbb", title: "B", channel: "C", tags: []))
+        library.add(Video(youtubeID: "ccccccccccc", title: "C", channel: "C", tags: ["Cooking"]))
+        return library
+    }
+
+    func testAddTagSkipsDuplicatesAndCountsChanges() {
+        var library = shelf()
+        let ids = Set(library.videos.map(\.id))
+
+        XCTAssertEqual(library.addTag("C++", to: ids), 3)
+        XCTAssertEqual(library.video(youtubeID: "aaaaaaaaaaa")?.tags, ["Math", "C++"])
+        XCTAssertEqual(library.addTag("c++", to: ids), 0, "already present, case-insensitively")
+        XCTAssertEqual(library.addTag("  #design ", to: Set([library.videos[0].id])), 1)
+    }
+
+    func testRemoveTagIsCaseInsensitiveAndCounted() {
+        var library = shelf()
+        let ids = Set(library.videos.map(\.id))
+        XCTAssertEqual(library.removeTag("math", from: ids), 1)
+        XCTAssertEqual(library.video(youtubeID: "aaaaaaaaaaa")?.tags, [])
+        XCTAssertEqual(library.removeTag("nothing", from: ids), 0)
+    }
+
+    func testBulkFavoriteAndWatched() {
+        var library = shelf()
+        let ids = Set(library.videos.map(\.id))
+        library.setFavorite(true, for: ids)
+        XCTAssertEqual(library.favoritesCount, 3)
+        library.setWatchStatus(.done, for: ids)
+        XCTAssertEqual(library.unwatchedCount, 0)
+        library.setWatchStatus(.unwatched, for: Set([library.videos[0].id]))
+        XCTAssertEqual(library.unwatchedCount, 1)
+    }
+
+    func testBulkAddThenRemoveRestoresTheOriginalTags() {
+        var library = shelf()
+        let ids = Set(library.videos.map(\.id))
+        let before = library.videos.map(\.tags)
+        XCTAssertEqual(library.addTag("Batch", to: ids), 3)
+        _ = library.removeTag("Batch", from: ids)
+        XCTAssertEqual(library.videos.map(\.tags), before)
+    }
+}

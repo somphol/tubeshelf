@@ -5,6 +5,9 @@ import TubeShelfCore
 struct ShelfView: View {
     let model: AppModel
 
+    @State private var showBulkCategory = false
+    @State private var confirmBulkRemove = false
+
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: 244, maximum: 360), spacing: 18, alignment: .top)]
     }
@@ -14,9 +17,100 @@ struct ShelfView: View {
             header
             Divider().opacity(0.4)
             content
+            if model.isSelecting { selectionBar }
+            if !model.isBrowsingPlaylists, model.showsPager { pager }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onExitCommand { if model.isSelecting { model.exitSelection() } }
+        .background {
+            if model.isSelecting {
+                Button("") { model.selectPage() }
+                    .keyboardShortcut("a", modifiers: .command)
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+            }
+        }
+    }
+
+    private var selectionBar: some View {
+        VStack(spacing: 0) {
+            Divider().opacity(0.4)
+            HStack(spacing: 10) {
+                Label("\(model.selectedCount) selected", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(model.selectedCount == 0 ? Color.secondary : Theme.accent)
+
+                Menu("Add to…") {
+                    ForEach(model.categoryChoices, id: \.self) { name in
+                        Button(name) { model.bulkAddTag(name) }
+                    }
+                    Divider()
+                    Button("New Category…") { showBulkCategory = true }
+                }
+                .menuStyle(.borderlessButton)
+                .controlSize(.small)
+                .disabled(model.selectedCount == 0)
+
+                Menu("Remove from…") {
+                    ForEach(model.categoriesInSelection, id: \.self) { name in
+                        Button(name) { model.bulkRemoveTag(name) }
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .controlSize(.small)
+                .disabled(model.categoriesInSelection.isEmpty)
+
+                Button {
+                    model.bulkSetFavorite(true)
+                } label: {
+                    Label("Favorite", systemImage: "star")
+                        .font(.system(size: 10.5))
+                }
+                .buttonStyle(.plain)
+                .disabled(model.selectedCount == 0)
+
+                Button {
+                    model.bulkToggleWatched()
+                } label: {
+                    Label("Watched", systemImage: "checkmark.circle")
+                        .font(.system(size: 10.5))
+                }
+                .buttonStyle(.plain)
+                .disabled(model.selectedCount == 0)
+
+                Button(role: .destructive) {
+                    confirmBulkRemove = true
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                        .font(.system(size: 10.5))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .disabled(model.selectedCount == 0)
+
+                Spacer()
+
+                Button("Select page") { model.selectPage() }
+                    .buttonStyle(.link)
+                    .font(.system(size: 10.5))
+                Button("Done") { model.exitSelection() }
+                    .buttonStyle(.link)
+                    .font(.system(size: 10.5))
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 8)
+            .background(.bar)
+        }
+        .sheet(isPresented: $showBulkCategory) {
+            BulkCategorySheet(model: model)
+        }
+        .alert("Remove \(model.selectedCount) video\(model.selectedCount == 1 ? "" : "s")?", isPresented: $confirmBulkRemove) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive) { model.bulkRemoveSelected() }
+        } message: {
+            Text("They leave the shelf. This cannot be undone.")
+        }
     }
 
     private var header: some View {
@@ -142,6 +236,8 @@ struct ShelfView: View {
                                     VideoCard(video: video, model: model)
                                 case .playlist(let playlist):
                                     PlaylistCard(record: playlist, model: model)
+                                        .opacity(model.isSelecting ? 0.35 : 1)
+                                        .allowsHitTesting(!model.isSelecting)
                                 }
                             }
                         }
@@ -153,9 +249,6 @@ struct ShelfView: View {
                 .onChange(of: model.pageWindow.pageIndex) { _, _ in
                     proxy.scrollTo("grid-top", anchor: .top)
                 }
-            }
-            if model.showsPager {
-                pager
             }
         }
     }
@@ -406,6 +499,17 @@ struct VideoCard: View {
                     Spacer()
                 }
 
+                if model.isSelecting {
+                    Image(systemName: model.selectedVideoIDs.contains(video.id)
+                          ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(model.selectedVideoIDs.contains(video.id) ? Color.white : Color.white.opacity(0.9))
+                        .padding(6)
+                        .background(.black.opacity(0.5), in: Circle())
+                        .padding(7)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+
                 if video.watchStatus != .unwatched {
                     Image(systemName: video.watchStatus == .done ? "checkmark.circle.fill" : "circle.lefthalf.filled")
                         .font(.system(size: 10, weight: .bold))
@@ -458,8 +562,30 @@ struct VideoCard: View {
         .shadow(color: .black.opacity(hovering ? 0.16 : 0.06), radius: hovering ? 12 : 4, y: hovering ? 6 : 2)
         .scaleEffect(hovering ? 1.012 : 1)
         .animation(.easeOut(duration: 0.16), value: hovering)
+        .overlay {
+            if model.isSelecting {
+                RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                    .strokeBorder(
+                        model.selectedVideoIDs.contains(video.id) ? Theme.accent : .clear,
+                        lineWidth: 2
+                    )
+            }
+        }
         .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
-        .onTapGesture { model.openDeck(startAt: video) }
+        .onTapGesture {
+            let flags = NSEvent.modifierFlags
+            if model.isSelecting {
+                if flags.contains(.shift) {
+                    model.selectRange(to: video)
+                } else {
+                    model.toggleSelection(video)
+                }
+            } else if flags.contains(.command) {
+                model.beginSelection(with: video)
+            } else {
+                model.openDeck(startAt: video)
+            }
+        }
         .onHover { hovering = $0 }
         .help("Saved \(video.addedTimestamp())")
         .contextMenu {
@@ -480,6 +606,7 @@ struct VideoCard: View {
             Button("More from \(video.channel)") {
                 model.showChannel(video.channel)
             }
+            Button("Select") { model.beginSelection(with: video) }
             Button("Edit categories and note…") { model.editingVideoID = video.id }
             Divider()
             Button("Remove from shelf", role: .destructive) { model.delete(video) }

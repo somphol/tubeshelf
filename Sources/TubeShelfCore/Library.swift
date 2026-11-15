@@ -157,6 +157,45 @@ public struct Library: Codable, Equatable, Sendable {
         videos[index].note = note
     }
 
+    // MARK: - Bulk edits
+
+    @discardableResult
+    public mutating func addTag(_ tag: String, to ids: Set<UUID>) -> Int {
+        guard let cleaned = TagNormalizer.canonical(tag), !ids.isEmpty else { return 0 }
+        var changed = 0
+        for index in videos.indices where ids.contains(videos[index].id) {
+            if !videos[index].tags.contains(where: { $0.caseInsensitiveCompare(cleaned) == .orderedSame }) {
+                videos[index].tags = TagNormalizer.merge(videos[index].tags + [cleaned])
+                changed += 1
+            }
+        }
+        return changed
+    }
+
+    @discardableResult
+    public mutating func removeTag(_ tag: String, from ids: Set<UUID>) -> Int {
+        guard !ids.isEmpty else { return 0 }
+        var changed = 0
+        for index in videos.indices where ids.contains(videos[index].id) {
+            let before = videos[index].tags.count
+            videos[index].tags.removeAll { $0.caseInsensitiveCompare(tag) == .orderedSame }
+            if videos[index].tags.count != before { changed += 1 }
+        }
+        return changed
+    }
+
+    public mutating func setFavorite(_ value: Bool, for ids: Set<UUID>) {
+        for index in videos.indices where ids.contains(videos[index].id) {
+            videos[index].isFavorite = value
+        }
+    }
+
+    public mutating func setWatchStatus(_ status: WatchStatus, for ids: Set<UUID>) {
+        for index in videos.indices where ids.contains(videos[index].id) {
+            videos[index].watchStatus = status
+        }
+    }
+
     /// Renames a category everywhere. If the target already exists on a video,
     /// the duplicate is dropped rather than duplicated. A pinned category stays
     /// pinned under its new name.

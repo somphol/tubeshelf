@@ -37,7 +37,12 @@ final class AppModel {
     var library: Library
     var filter: ShelfFilter = .all
     var query: String = "" {
-        didSet { if query != oldValue { pageIndex = 0 } }
+        didSet {
+            if query != oldValue {
+                pageIndex = 0
+                resetSelection()
+            }
+        }
     }
     var searchScope: SearchScope = .everything {
         didSet {
@@ -81,6 +86,20 @@ final class AppModel {
     }
     var editingVideoID: UUID?
     var toast: String?
+    var toastActionTitle: String?
+    var toastAction: (() -> Void)?
+
+    // Bulk selection
+    var isSelecting = false
+    var selectedVideoIDs: Set<UUID> = []
+    var selectionAnchorID: UUID?
+    private var pendingUndo: BulkEdit?
+
+    struct BulkEdit {
+        var tags: [UUID: [String]] = [:]
+        var favorites: [UUID: Bool] = [:]
+        var watched: [UUID: WatchStatus] = [:]
+    }
     var searchFocusRequest = 0
 
     var categorySort: CategorySort = .mostVideos {
@@ -210,6 +229,7 @@ final class AppModel {
         deck = nil
         editingVideoID = nil
         isAddPresented = false
+        resetSelection()
         scheduleSpotlight()
         flash("Switched to \(profile.name)")
     }
@@ -534,6 +554,163 @@ final class AppModel {
         filter = newFilter
         query = ""
         pageIndex = 0
+        resetSelection()
+    }
+
+    // MARK: - Selection
+
+    var selectedVideos: [Video] {
+        library.videos.filter { selectedVideoIDs.contains($0.id) }
+    }
+
+    var selectedCount: Int { selectedVideoIDs.count }
+
+    var pagedVideoIDs: [UUID] {
+        pagedItems.compactMap { item in
+            if case .video(let video) = item { return video.id }
+            return nil
+        }
+    }
+
+    /// Categories present in the current selection, for the remove menu.
+    var categoriesInSelection: [String] {
+        TagNormalizer.merge(selectedVideos.flatMap(\.tags)).sorted()
+    }
+
+    func beginSelection(with video: Video) {
+        isSelecting = true
+        selectedVideoIDs.insert(video.id)
+        selectionAnchorID = video.id
+    }
+
+    func toggleSelection(_ video: Video) {
+        if selectedVideoIDs.contains(video.id) {
+            selectedVideoIDs.remove(video.id)
+        } else {
+            selectedVideoIDs.insert(video.id)
+        }
+        selectionAnchorID = video.id
+    }
+
+    func selectRange(to video: Video) {
+        let ids = pagedVideoIDs
+        guard let anchor = selectionAnchorID,
+              let start = ids.firstIndex(of: anchor),
+              let end = ids.firstIndex(of: video.id)
+        else {
+            toggleSelection(video)
+            return
+        }
+        let bounds = start <= end ? start...end : end...start
+        selectedVideoIDs.formUnion(ids[bounds])
+    }
+
+    func selectPage() {
+        selectedVideoIDs.formUnion(pagedVideoIDs)
+        selectionAnchorID = pagedVideoIDs.first
+    }
+
+    func clearSelection() {
+        selectedVideoIDs.removeAll()
+        selectionAnchorID = nil
+    }
+
+    func resetSelection() {
+        isSelecting = false
+        clearSelection()
+        pendingUndo = nil
+    }
+
+    func exitSelection() {
+        resetSelection()
+    }
+
+    // MARK: - Bulk edits
+
+    private func snapshot(for ids: Set<UUID>) -> BulkEdit {
+        var snapshot = BulkEdit()
+        for video in library.videos where ids.contains(video.id) {
+            snapshot.tags[video.id] = video.tags
+            snapshot.favorites[video.id] = video.isFavorite
+            snapshot.watched[video.id] = video.watchStatus
+        }
+        return snapshot
+    }
+
+    func bulkAddTag(_ tag: String) {
+        guard let cleaned = TagNormalizer.canonical(tag) else { return }
+        let ids = selectedVideoIDs
+        guard !ids.isEmpty else { return }
+        pendingUndo = snapshot(for: ids)
+        let changed = library.addTag(cleaned, to: ids)
+        save()
+        refreshDeck()
+        flash(
+            "Added \(cleaned) to \(changed) video\(changed == 1 ? "" : "s")",
+            actionTitle: "Undo"
+        ) { [weak self] in self?.undoBulkEdit() }
+    }
+
+    func bulkRemoveTag(_ tag: String) {
+        let ids = selectedVideoIDs
+        guard !ids.isEmpty else { return }
+        pendingUndo = snapshot(for: ids)
+        let changed = library.removeTag(tag, from: ids)
+        save()
+        refreshDeck()
+        flash(
+            "Removed \(tag) from \(changed) video\(changed == 1 ? "" : "s")",
+            actionTitle: "Undo"
+        ) { [weak self] in self?.undoBulkEdit() }
+    }
+
+    func bulkSetFavorite(_ value: Bool) {
+        let ids = selectedVideoIDs
+        guard !ids.isEmpty else { return }
+        pendingUndo = snapshot(for: ids)
+        library.setFavorite(value, for: ids)
+        save()
+        refreshDeck()
+        flash(value ? "Favorited \(ids.count)" : "Unfavorited \(ids.count)", actionTitle: "Undo") { [weak self] in
+            self?.undoBulkEdit()
+        }
+    }
+
+    func bulkToggleWatched() {
+        let ids = selectedVideoIDs
+        guard !ids.isEmpty else { return }
+        let allWatched = selectedVideos.allSatisfy { $0.watchStatus == .done }
+        pendingUndo = snapshot(for: ids)
+        library.setWatchStatus(allWatched ? .unwatched : .done, for: ids)
+        save()
+        refreshDeck()
+        flash(allWatched ? "Marked \(ids.count) unwatched" : "Marked \(ids.count) watched", actionTitle: "Undo") { [weak self] in
+            self?.undoBulkEdit()
+        }
+    }
+
+    func bulkRemoveSelected() {
+        let ids = selectedVideoIDs
+        guard !ids.isEmpty else { return }
+        pendingUndo = nil
+        for id in ids { library.remove(id: id) }
+        save()
+        refreshDeck()
+        let removed = ids.count
+        clearSelection()
+        isSelecting = false
+        flash("Removed \(removed) video\(removed == 1 ? "" : "s") from the shelf")
+    }
+
+    private func undoBulkEdit() {
+        guard let snapshot = pendingUndo else { return }
+        for (id, tags) in snapshot.tags { library.setTags(tags, for: id) }
+        for (id, favorite) in snapshot.favorites { library.setFavorite(favorite, for: [id]) }
+        for (id, status) in snapshot.watched { library.setWatchStatus(status, for: id) }
+        pendingUndo = nil
+        save()
+        refreshDeck()
+        flash("Reverted the last bulk change")
     }
 
     func openDeck(startAt video: Video) {
@@ -984,6 +1161,9 @@ final class AppModel {
         // A category can disappear when its last video is deleted or retagged;
         // drop the orphaned pin before it reaches disk. Courses count too.
         prunePins()
+        if !selectedVideoIDs.isEmpty {
+            selectedVideoIDs.formIntersection(Set(library.videos.map(\.id)))
+        }
         // If deletions emptied the last page, fall back to a page that exists.
         pageIndex = PageWindow(
             total: visibleVideos.count,
@@ -998,13 +1178,21 @@ final class AppModel {
         scheduleSpotlight()
     }
 
-    func flash(_ message: String) {
+    func flash(
+        _ message: String,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
+    ) {
         toast = message
+        toastActionTitle = actionTitle
+        toastAction = action
         toastTask?.cancel()
         toastTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(2.6))
+            try? await Task.sleep(for: .seconds(action == nil ? 2.6 : 5.0))
             guard !Task.isCancelled else { return }
             self?.toast = nil
+            self?.toastActionTitle = nil
+            self?.toastAction = nil
         }
     }
 

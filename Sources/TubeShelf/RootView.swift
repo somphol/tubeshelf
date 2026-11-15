@@ -40,6 +40,19 @@ struct RootView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
+                        if model.isSelecting {
+                            model.exitSelection()
+                        } else {
+                            model.isSelecting = true
+                        }
+                    } label: {
+                        Label("Select", systemImage: "checkmark.circle")
+                    }
+                    .disabled(model.isBrowsingPlaylists)
+                    .help(model.isSelecting ? "Leave selection (esc)" : "Select videos for bulk edits (⌘⇧A)")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
                         model.isAddPresented = true
                     } label: {
                         Label("Add video", systemImage: "plus")
@@ -88,7 +101,7 @@ struct RootView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            ToastView(message: model.toast)
+            ToastView(model: model)
                 .padding(.bottom, 22)
         }
         .onChange(of: model.filter) { _, _ in model.refreshDeck() }
@@ -587,19 +600,26 @@ struct LogoMark: View {
 }
 
 struct ToastView: View {
-    let message: String?
+    let model: AppModel
 
     var body: some View {
-        if let message {
-            Text(message)
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(.regularMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
-                .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .id(message)
+        if let message = model.toast {
+            HStack(spacing: 10) {
+                Text(message)
+                    .font(.system(size: 12, weight: .medium))
+                if let title = model.toastActionTitle, let action = model.toastAction {
+                    Button(title) { action() }
+                        .buttonStyle(.link)
+                        .font(.system(size: 12, weight: .semibold))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
+            .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .id(message)
         }
     }
 }

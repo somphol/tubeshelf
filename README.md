@@ -147,6 +147,18 @@ so shuffling courses never disturbs the video grid.
 videos get a small badge on the card. Videos saved before this feature count as
 unwatched, which is the honest default.
 
+## Bulk edits
+
+**Select** in the toolbar (**⌘⇧A**) or **⌘-click** a card. Checkboxes appear on every
+video; clicking toggles, **⇧-click** extends a range, **⌘A** takes the page, and
+**Esc** leaves. The bar at the bottom adds or removes categories (including
+creating a new one), favorites, marks watched, or removes from the shelf after a
+confirmation.
+
+The selection survives paging and is cleared when the category, search or profile
+changes, so you can't bulk-edit things you can no longer see. Tag, favorite and
+watched changes offer **Undo** in the toast; removal does not.
+
 ## Playlists
 
 Two independent actions, both in the toolbar's playlist menu and the File menu:

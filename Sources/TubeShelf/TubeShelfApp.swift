@@ -61,6 +61,16 @@ struct TubeShelfApp: App {
                           ? model.visiblePlaylists.isEmpty
                           : model.visibleVideos.isEmpty)
 
+                Button("Select Videos") {
+                    if model.isSelecting {
+                        model.exitSelection()
+                    } else {
+                        model.isSelecting = true
+                    }
+                }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+                .disabled(model.isBrowsingPlaylists)
+
                 Button("Search Videos") {
                     model.focusSearch()
                 }

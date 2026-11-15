@@ -88,6 +88,11 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Bulk selection is a mode, and it is cleared aggressively.** `isSelecting` +
+  `selectedVideoIDs`; `select(_:)` and any query change reset it, deletes prune it,
+  and courses are non-selectable. The undo snapshot lives in `AppModel.pendingUndo`
+  and is captured before every bulk tag/favorite/watched change; removal is
+  confirmed and not undoable. Do not keep a selection across filter changes.
 - **The Tidy panel is advisory.** `CategoryAudit` only proposes merges, lonely
   categories and catch-alls; every change goes through the normal
   `mergeCategories` / `deleteTag` paths with a confirmation.

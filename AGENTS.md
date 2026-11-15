@@ -328,6 +328,9 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - The orbit view is a showpiece: depth occludes nodes and only the top eight carry
   billboard labels. Window `cacheDisplay` cannot capture SceneKit, so 3D visual
   checks use `TUBESHELF_ORBIT_SNAPSHOT=<path>` and `SCNView.snapshot()`.
+- The public release is arm64-only and ad-hoc signed. Intel Macs must build from
+  source; the README's right-click Open steps are required. Rebuild the zip and
+  update the SHA-256 in the release notes whenever the bundle changes.
 - Guest extraction only fires on the patterns above. An episode whose guest is
   named halfway down the description, or only in artwork, gets no name tag.
 - Scraping depends on YouTube's private page markup. For embed-disabled videos
@@ -341,6 +344,12 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 importer is specced there, including the Takeout failure mode ("Service failed to
 retrieve this item") and why scraping/embedded login is not an option. Read it
 before re-researching any of those questions.
+
+Also deferred: **hourly, change-only Google Drive autosave**. The agreed cadence is
+a 60-second check that writes at most once per hour, only when `changeRevision`
+changed, as a timestamped `TubeShelf Autosave (Mac) â€¦json`, keeping the newest 24
+per device. Local `save()` already writes every mutation. The companion web app's
+`PLAN.md` carries the matching web autocadence. Not implemented yet.
 
 ## Continuity
 

@@ -345,6 +345,7 @@ struct VideoCard: View {
         .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
         .onTapGesture { model.openDeck(startAt: video) }
         .onHover { hovering = $0 }
+        .help("Saved \(video.addedTimestamp())")
         .contextMenu {
             Button("Open slide deck") { model.openDeck(startAt: video) }
             Button("Open on YouTube") { NSWorkspace.shared.open(video.watchURL) }

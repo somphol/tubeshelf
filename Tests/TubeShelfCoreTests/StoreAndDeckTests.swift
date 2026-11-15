@@ -88,6 +88,43 @@ final class StoreAndDeckTests: XCTestCase {
         XCTAssertEqual(deck.position, 1)
     }
 
+    func testBackupKeepsTheExactSavedMoment() throws {
+        let zone = TimeZone(identifier: "Asia/Bangkok")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let moment = calendar.date(from: DateComponents(
+            year: 2026, month: 11, day: 14, hour: 19, minute: 32, second: 26
+        ))!
+
+        var library = Library()
+        library.add(Video(youtubeID: "dQw4w9WgXcQ", title: "Saved abroad", channel: "C", addedAt: moment))
+
+        let restored = try ShelfBackup.decode(try ShelfBackup.encode(library))
+        XCTAssertEqual(
+            restored.videos[0].addedAt.timeIntervalSince1970,
+            moment.timeIntervalSince1970,
+            accuracy: 0.001,
+            "import must honour the original moment, to the second"
+        )
+        XCTAssertTrue(restored.videos[0].addedTimestamp(timeZone: zone).contains("19:32"))
+    }
+
+    func testTimestampLabelCarriesDateTimeAndZone() {
+        let zone = TimeZone(identifier: "Asia/Bangkok")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let moment = calendar.date(from: DateComponents(
+            year: 2026, month: 11, day: 14, hour: 9, minute: 5, second: 0
+        ))!
+        let video = Video(youtubeID: "dQw4w9WgXcQ", title: "x", channel: "c", addedAt: moment)
+
+        let label = video.addedTimestamp(timeZone: zone)
+        XCTAssertTrue(label.contains("14 Nov 2026"), label)
+        XCTAssertTrue(label.contains("09:05"), label)
+        let expectedZone = zone.abbreviation(for: moment) ?? "GMT+7"
+        XCTAssertTrue(label.contains(expectedZone), "\(label) should mention \(expectedZone)")
+    }
+
     func testMetadataScrapingIsForgiving() {
         let html = """
         <html><head><meta name="description" content="A &amp; B"></head>

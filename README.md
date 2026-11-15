@@ -157,6 +157,11 @@ the file like any other. With several accounts you pick once and the choice is
 remembered. If Drive is not installed the button stays disabled and Settings links
 to the download.
 
+Every video keeps the exact moment it was saved — an instant, not a wall time —
+and the deck shows it as `14 Nov 2026, 19:32 PST`. Because it is stored as an
+instant, a backup restored in another timezone still reads correctly, and the
+original value is never rewritten by an import.
+
 *Settings → Library → **Back up…*** (or **⇧⌘S**) writes one JSON file:
 videos, categories, notes and pins. Put it in a Google Drive, Dropbox or iCloud
 folder and it is a portable snapshot — not a live sync.

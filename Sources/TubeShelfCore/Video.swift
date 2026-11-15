@@ -73,6 +73,20 @@ public struct Video: Identifiable, Codable, Hashable, Sendable {
         addedAt.formatted(.dateTime.day().month(.abbreviated).year())
     }
 
+    /// Full moment, with the zone it is being shown in. The stored value is an
+    /// instant; the zone is a presentation choice, so a shelf opened in another
+    /// country still reads correctly.
+    public func addedTimestamp(
+        timeZone: TimeZone = .current,
+        locale: Locale = .current
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "d MMM yyyy, HH:mm zzz"
+        return formatter.string(from: addedAt)
+    }
+
     /// Text used for search and for the keyword fallback tagger.
     public var searchCorpus: String {
         ([title, channel, note] + tags).joined(separator: " ")

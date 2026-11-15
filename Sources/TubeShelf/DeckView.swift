@@ -174,7 +174,7 @@ struct DeckView: View {
                         .foregroundStyle(.white.opacity(0.5))
                 }
                 Text("·").foregroundStyle(.white.opacity(0.3))
-                Text("saved \(video.addedLabel)")
+                Text("saved \(video.addedTimestamp())")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.5))
             }

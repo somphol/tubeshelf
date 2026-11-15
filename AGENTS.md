@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 139 unit tests
+swift test                                   # 148 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -219,6 +219,13 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   `pinnedChannels` live in `library.json` because they are user data worth backing
   up. Sort order and search scope are interface state in `UserDefaults`
   (`Preferences`), never in the library file.
+- **The map is a presentation, not a filter.** `ShelfPresentation` (`grid` /
+  `map`) lives in `UserDefaults`; Shelf is the default and ⌘1/⌘2 switch. The map
+  presents the same filter and never mutates the library. `CategoryGraph` in Core
+  owns nodes, shared-video edges, the four-link degree cap and hiding unlinked
+  categories; `separated()` resolves circle overlaps after the seeded force
+  layout. Click filters and stays, double-click opens the shelf. Edges are shared
+  videos only — never channels, durations or guesses.
 - **Channel pins are names, not IDs.** `pinnedChannels` keeps YouTube's spelling and
   dedupes case-insensitively; a rename is a new pin. Pinned channels render in the
   same Pinned section as categories and are excluded from the Channels list, and
@@ -280,12 +287,16 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 
 ## Known issues
 
-- The Foundation Models call is compiled but **not runtime-verified**: this
-  machine has no downloaded model asset (`fm models` reports `modelNotReady`), so
-  only the keyword fallback has actually executed. Enabling Siri/Apple Intelligence
-  starts the asset download; then `swift run tubeshelf-check --probe` should say
-  `Apple Intelligence`. PCC via `fm` only works from Terminal.app, not from this
-  shell.
+- Foundation Models is now **runtime-verified** (`--probe` reports Apple
+  Intelligence, `--fetch` shows `[Apple Intelligence]`). Some descriptions trip
+  the guardrail with "Detected content likely to be unsafe"; the engine falls back
+  to keywords and the note says so. Apple's tagging model can also be loose on thin
+  metadata, so title/channel evidence and the deterministic guest/format tags still
+  matter. PCC via `fm` only works from Terminal.app, not from this shell.
+- YouTube can return an unrelated description inside `videoDetails` (Me at the zoo
+  currently carries a nanoplastics description). The keyword classifier's anchor
+  rule keeps such body-only text from creating categories, but the model may use
+  it; do not weight description above title/channel in future scoring.
 - The local-server path is verified against a stub OpenAI endpoint, not a live
   model. Its 12 s timeout and error path deliberately fall back to keywords.
 - Google Drive for Desktop needs an admin install and an interactive sign-in, so
@@ -307,6 +318,8 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - Keyword suggestions are precision-first: a video whose only signal is in the
   description lands in Unsorted rather than getting a loose tag.
 - Inline playback needs network access and a video that allows embedding.
+- The map shows shared-video links only. A library whose categories never share a
+  video has a map with no nodes; the view says so instead of drawing a ring.
 - Guest extraction only fires on the patterns above. An episode whose guest is
   named halfway down the description, or only in artwork, gets no name tag.
 - Scraping depends on YouTube's private page markup. For embed-disabled videos

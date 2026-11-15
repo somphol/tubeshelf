@@ -237,14 +237,14 @@ final class ChannelFacetTests: XCTestCase {
     }
 
     func testChannelHintOnlyFillsAnEmptyAnswer() async {
-        let hinted = await TagEngine().suggest(
+        let hinted = await TagEngine(useOnDeviceModel: false).suggest(
             title: "Untitled conversation",
             channel: "Some Channel",
             channelHint: "Cooking"
         )
         XCTAssertEqual(hinted.tags, ["Cooking"])
 
-        let decisive = await TagEngine().suggest(
+        let decisive = await TagEngine(useOnDeviceModel: false).suggest(
             title: "Sourdough bread for beginners",
             channel: "Some Channel",
             channelHint: "Cooking"
@@ -253,7 +253,7 @@ final class ChannelFacetTests: XCTestCase {
     }
 
     func testChannelHintIgnoresUnknownCategories() async {
-        let suggestion = await TagEngine().suggest(
+        let suggestion = await TagEngine(useOnDeviceModel: false).suggest(
             title: "Untitled",
             channel: "Some Channel",
             channelHint: "Made Up Category"

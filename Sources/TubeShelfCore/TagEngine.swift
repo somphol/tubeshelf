@@ -33,7 +33,12 @@ public enum OnDeviceModelStatus: Sendable, Equatable {
 /// The one place the app asks for tag suggestions. Prefers the on-device model,
 /// and always has a deterministic answer when it cannot be used.
 public struct TagEngine: Sendable {
-    public init() {}
+    /// Tests that pin the deterministic answer pass false; the app keeps true.
+    public let useOnDeviceModel: Bool
+
+    public init(useOnDeviceModel: Bool = true) {
+        self.useOnDeviceModel = useOnDeviceModel
+    }
 
     public static var status: OnDeviceModelStatus {
         #if canImport(FoundationModels)
@@ -101,7 +106,7 @@ public struct TagEngine: Sendable {
         let fallback = applyingChannelHint(to: heuristic, hint: channelHint, knownCategories: knownCategories)
 
         #if canImport(FoundationModels)
-        if #available(macOS 26.0, *), FoundationModelTagging.status.isAvailable {
+        if useOnDeviceModel, #available(macOS 26.0, *), FoundationModelTagging.status.isAvailable {
             do {
                 let raw = try await FoundationModelTagging.suggest(
                     title: title,

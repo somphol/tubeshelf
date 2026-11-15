@@ -16,17 +16,35 @@ struct ShelfView: View {
             header
             Divider().opacity(0.4)
             content
-            if !model.isBrowsingPlaylists, model.showsPager { pager }
+            if !model.isBrowsingPlaylists, model.presentation == .grid, model.showsPager { pager }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
-        .onExitCommand { if model.isSelecting { model.exitSelection() } }
+        .onExitCommand {
+            if model.isSelecting {
+                model.exitSelection()
+            } else if model.presentation == .map {
+                model.mapEscape()
+            }
+        }
         .background {
             if model.isSelecting {
                 Button("") { model.selectPage() }
                     .keyboardShortcut("a", modifiers: .command)
                     .opacity(0)
                     .frame(width: 0, height: 0)
+            }
+        }
+        .background {
+            if !model.isBrowsingPlaylists {
+                Group {
+                    Button("") { model.presentation = .grid }
+                        .keyboardShortcut("1", modifiers: .command)
+                    Button("") { model.presentation = .map }
+                        .keyboardShortcut("2", modifiers: .command)
+                }
+                .opacity(0)
+                .frame(width: 0, height: 0)
             }
         }
     }
@@ -83,6 +101,15 @@ struct ShelfView: View {
             if model.isSelecting {
                 selectionControls
             } else {
+            if !model.isBrowsingPlaylists {
+                presentationSwitcher
+            }
+            if model.presentation == .map {
+                Text(model.mapHint)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            } else {
             ShelfSearchField(model: model)
             Menu {
                 Button("Shuffle again") { model.shuffleCurrent() }
@@ -118,10 +145,27 @@ struct ShelfView: View {
                 .help("Walk through this category as slides")
             }
             }
+            }
         }
         .padding(.horizontal, 22)
         .padding(.top, 14)
         .padding(.bottom, 12)
+    }
+
+    private var presentationSwitcher: some View {
+        Picker("Presentation", selection: Binding(
+            get: { model.presentation },
+            set: { model.presentation = $0 }
+        )) {
+            Image(systemName: "square.grid.2x2")
+                .tag(ShelfPresentation.grid)
+            Image(systemName: "point.3.connected.trianglepath.dotted")
+                .tag(ShelfPresentation.map)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 76)
+        .help("Shelf (⌘1) or category map (⌘2)")
     }
 
     private var selectionControls: some View {
@@ -201,6 +245,8 @@ struct ShelfView: View {
     private var content: some View {
         if model.isBrowsingPlaylists {
             playlistGrid
+        } else if model.presentation == .map {
+            CategoryMapView(model: model)
         } else if model.visibleItems.isEmpty {
             emptyState
         } else {

@@ -10,6 +10,14 @@ enum LocalAIState: Equatable {
     case unreachable(String)
 }
 
+/// How the content pane presents the current filter.
+enum ShelfPresentation: String, CaseIterable, Identifiable {
+    case grid
+    case map
+
+    var id: String { rawValue }
+}
+
 /// One cell in the shelf grid: a video, or a course in a category view.
 extension ShelfItem {
     var deckSlide: DeckSlide {
@@ -145,6 +153,16 @@ final class AppModel {
     var selectedVideoIDs: Set<UUID> = []
     var selectionAnchorID: UUID?
     private var pendingUndo: BulkEdit?
+
+    /// Grid or map. Interface state, never library data.
+    var presentation: ShelfPresentation = Preferences.presentation {
+        didSet {
+            Preferences.presentation = presentation
+            if presentation == .map, isSelecting {
+                exitSelection()
+            }
+        }
+    }
 
     struct BulkEdit {
         var tags: [UUID: [String]] = [:]
@@ -584,6 +602,13 @@ final class AppModel {
 
     var isSearching: Bool {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var mapHint: String {
+        if let tag = filter.tagName {
+            return "\(tag) · click another node to filter"
+        }
+        return "Click a category to filter · double-click to open the shelf"
     }
 
     var subtitle: String {
@@ -1157,6 +1182,15 @@ final class AppModel {
         select(.channel(name))
     }
 
+    /// Esc in the map: clear the category filter first, then return to the grid.
+    func mapEscape() {
+        if case .tag = filter {
+            select(.all)
+        } else {
+            presentation = .grid
+        }
+    }
+
     func openDeckForChannel(_ name: String) {
         filter = .channel(name)
         query = ""
@@ -1354,6 +1388,11 @@ enum Preferences {
     static var localAIModel: String {
         get { defaults.string(forKey: "localAIModel") ?? "system" }
         set { defaults.set(newValue, forKey: "localAIModel") }
+    }
+
+    static var presentation: ShelfPresentation {
+        get { ShelfPresentation(rawValue: defaults.string(forKey: "shelfPresentation") ?? "") ?? .grid }
+        set { defaults.set(newValue.rawValue, forKey: "shelfPresentation") }
     }
 
     static var activeProfileID: String? {

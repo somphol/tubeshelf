@@ -301,6 +301,9 @@ struct TubeShelfCheck {
                 localAI: localAI
             )
             print("Tags    \(suggestion.tags.joined(separator: ", "))  [\(suggestion.source.label)]")
+            if !suggestion.note.isEmpty {
+                print("Note    \(suggestion.note)")
+            }
             return true
         } catch {
             print("Fetch failed: \(error.localizedDescription)")

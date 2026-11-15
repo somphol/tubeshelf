@@ -63,6 +63,11 @@ Verify the whole thing (tests, headless checks, bundle, signature):
 8. Hovering a category in the sidebar reveals a ▶ that presents it directly;
    right-click to pin, present, rename, **merge into another category**, or delete
    it. The ⋯ menu next to *Categories* sorts the sidebar and opens the manager.
+9. **Views** — the header switch (**⌘1** grid, **⌘2** map) keeps the shelf and
+   adds an optional category map. Node area is the video count; a line means at
+   least one video carries both categories. Click filters and stays, double-click
+   opens the filtered shelf, right-click pins or presents. Categories with no
+   shared video stay hidden until they earn a link.
 
 Right-click a video for favorites, copying the link, editing categories and notes,
 or removing it. Right-click a category to rename or delete it. Settings (**⌘,**)
@@ -314,6 +319,8 @@ swift run tubeshelf-check --help                 # every flag
 | `.../Library.swift` | Pure shelf model: filters, scoped search, pins, merge, sorted tag counts |
 | `.../LibraryStore.swift` | Atomic JSON persistence |
 | `.../DeckModel.swift` | Slide index, clamping, progress |
+| `.../CategoryGraph.swift` | Categories as nodes, shared-video edges, seeded layout |
+| `Sources/TubeShelf/CategoryMapView.swift` | Canvas map, hover/selection, legend |
 | `Sources/TubeShelf/AppModel.swift` | Observable app state and mutations |
 | `.../RootView.swift` | Split view, sidebar, toolbar, sheets |
 | `.../ShelfView.swift` | Grid of cards + the title/everything search field |
@@ -331,11 +338,10 @@ swift run tubeshelf-check --help                 # every flag
 
 ## Known limitations
 
-- The Foundation Models path is compiled against the macOS 26 SDK but could not
-  be exercised on this machine: the Apple Intelligence model asset is not
-  downloaded, so `SystemLanguageModel` reports `modelNotReady` and the app uses
-  the keyword classifier. Enabling Siri/Apple Intelligence starts that download;
-  `fm models` shows when it is ready.
+- The Foundation Models path is live on this Mac. Some descriptions make the
+  model refuse with "Detected content likely to be unsafe"; the app then uses the
+  keyword classifier and labels the result accordingly. Thin metadata can also
+  produce loose suggestions, so review before adding.
 - The optional local-server path is verified against a stub Chat Completions
   endpoint, not against a live model. In Settings, point it at
   `http://127.0.0.1:1976/v1` (`fm serve`) or `http://127.0.0.1:11434/v1` (Ollama),
@@ -344,6 +350,8 @@ swift run tubeshelf-check --help                 # every flag
   or use `brew services start ollama`. PCC only runs inside Terminal.app.
 - No OAuth, so the app cannot read your subscriptions or playlists; it only sees
   links you paste.
+- The map is a category graph: it links categories that share a video. Channels,
+  people and courses do not create edges yet, and unlinked categories are hidden.
 - Playback always opens YouTube. The embedded player returns errors 152/153 in
   WKWebView, so the app does not ship an iframe.
 - Description and duration come from scraping the watch page; if YouTube changes

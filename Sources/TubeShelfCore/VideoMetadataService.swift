@@ -151,7 +151,10 @@ enum MetaScraper {
     }
 
     static func description(fromHTML html: String) -> String? {
-        if let raw = firstCapture(#""shortDescription":"((?:[^"\\]|\\.)*)""#, in: html),
+        // Recommendations can ship their own shortDescription before the real
+        // player response. Only trust the one inside videoDetails.
+        let details = scopedToVideoDetails(html)
+        if let raw = firstCapture(#""shortDescription":"((?:[^"\\]|\\.)*)""#, in: details),
            let decoded = decodeJSONString(raw),
            !decoded.isEmpty {
             return decoded
@@ -164,10 +167,17 @@ enum MetaScraper {
     }
 
     static func durationSeconds(fromHTML html: String) -> Int? {
-        if let raw = firstCapture(#""lengthSeconds":"(\d+)""#, in: html) {
+        if let raw = firstCapture(#""lengthSeconds":"(\d+)""#, in: scopedToVideoDetails(html)) {
             return Int(raw)
         }
         return nil
+    }
+
+    /// Everything after the player's `videoDetails` marker, or the whole page
+    /// when the marker is absent (older markup).
+    private static func scopedToVideoDetails(_ html: String) -> String {
+        guard let range = html.range(of: #""videoDetails""#) else { return html }
+        return String(html[range.upperBound...])
     }
 
     static func firstCapture(_ pattern: String, in text: String) -> String? {

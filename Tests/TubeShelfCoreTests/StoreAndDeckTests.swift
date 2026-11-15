@@ -135,6 +135,16 @@ final class StoreAndDeckTests: XCTestCase {
         XCTAssertNil(MetaScraper.durationSeconds(fromHTML: "<html></html>"))
     }
 
+    func testMetadataScrapingIgnoresRecommendedVideoDescriptions() {
+        let html = """
+        <script>{"shortDescription":"A recommended video","lengthSeconds":"99"}</script>
+        <script>{"videoDetails":{"videoId":"jNQXAC9IVRw","title":"Me at the zoo","lengthSeconds":"19",
+        "shortDescription":"The first video on YouTube"}}</script>
+        """
+        XCTAssertEqual(MetaScraper.description(fromHTML: html), "The first video on YouTube")
+        XCTAssertEqual(MetaScraper.durationSeconds(fromHTML: html), 19)
+    }
+
     func testMetadataScrapingFallsBackForEmbedDisabledVideos() {
         let html = """
         <html><head><meta property="og:title" content="Stanford CS229 I Machine Learning &amp; LLMs"></head>

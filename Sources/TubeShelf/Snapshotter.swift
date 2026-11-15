@@ -37,11 +37,20 @@ enum Snapshotter {
             }
             try? await Task.sleep(for: .milliseconds(700))
 
+            // Presentation is persisted, so every screenshot states its mode.
+            model.presentation = .grid
             switch mode {
             case "deck":
                 if let first = model.visibleVideos.first { model.openDeck(startAt: first) }
             case "add":
                 model.isAddPresented = true
+            case "map":
+                model.presentation = .map
+            case "map-selected":
+                model.presentation = .map
+                if model.combinedTagCounts.contains(where: { $0.name == "Math" }) {
+                    model.select(.tag("Math"))
+                }
             case "manager":
                 model.isCategoryManagerPresented = true
             case "channels":

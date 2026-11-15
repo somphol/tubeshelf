@@ -105,8 +105,8 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   rebuilds everything. Results use the `tubeshelf://video/<id>` and
   `tubeshelf://playlist/<id>` scheme, so `CFBundleURLTypes` must stay in
   `Support/Info.plist` and `RootView` must keep the `onOpenURL` handler.
-- **Deck input is tri-modal.** Buttons, arrow keys, Home/End, and a scroll-wheel
-  monitor that ignores the bottom 120 pt (filmstrip and controls). Keep that guard
+- **Deck input is quad-modal.** Buttons, edge chevrons over the artwork, arrow keys, Home/End, and a
+  scroll-wheel monitor that ignores the bottom 120 pt (filmstrip and controls). Keep that guard
   or horizontal filmstrip scrolling will flip slides.
 - **The deck carries two slide types.** `DeckModel` holds `[DeckSlide]`
   (`.video` / `.playlist`); the video-only initialiser wraps videos for chapter

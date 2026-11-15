@@ -27,6 +27,7 @@ struct DeckView: View {
 
                         HStack(alignment: .center, spacing: 28) {
                             media(for: current)
+                                .overlay { slideArrows }
                                 .frame(width: max(360, mediaWidth))
                             info(for: current)
                                 .frame(width: infoWidth, alignment: .leading)
@@ -241,6 +242,38 @@ struct DeckView: View {
                 .foregroundStyle(.white)
                 .offset(x: 2)
         }
+    }
+
+    /// Mouse controls over the artwork: the same moves as the arrow keys.
+    private var slideArrows: some View {
+        HStack {
+            arrowButton(forward: false)
+            Spacer()
+            arrowButton(forward: true)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private func arrowButton(forward: Bool) -> some View {
+        let disabled = forward ? (deck?.isLast ?? true) : (deck?.isFirst ?? true)
+        return Button {
+            if forward {
+                model.deck?.showNext()
+            } else {
+                model.deck?.showPrevious()
+            }
+        } label: {
+            Image(systemName: forward ? "chevron.right" : "chevron.left")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(.black.opacity(0.45), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.25 : 1)
+        .help(forward ? "Next slide (→)" : "Previous slide (←)")
     }
 
     // MARK: - Info

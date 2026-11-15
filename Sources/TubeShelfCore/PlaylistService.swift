@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PlaylistItem: Sendable, Equatable, Identifiable {
+public struct PlaylistItem: Sendable, Hashable, Identifiable, Codable {
     public let videoID: String
     public let title: String
     public let channel: String
@@ -21,6 +21,10 @@ public struct PlaylistMetadata: Sendable, Equatable {
     public let title: String
     public let items: [PlaylistItem]
     public let truncated: Bool
+
+    /// Every item comes from the same channel page in practice; the first one is
+    /// the cheapest reliable label and is empty when the page omitted bylines.
+    public var channel: String { items.first?.channel ?? "" }
 
     public init(playlistID: String, title: String, items: [PlaylistItem], truncated: Bool) {
         self.playlistID = playlistID
@@ -88,9 +92,9 @@ enum PlaylistParser {
             playlistID: playlistID,
             title: playlistTitle(from: root) ?? pageTitle(from: html) ?? "Playlist",
             items: items,
-            // The page only ships the first batch; a continuation token means the
-            // playlist is longer than what we could read in one request.
-            truncated: items.count >= limit || hasContinuation(root)
+            // YouTube ships about 100 items per page. A continuation token is also
+            // present for unrelated shelves, so trust the item count instead.
+            truncated: items.count >= min(limit, 100)
         )
     }
 
@@ -168,15 +172,33 @@ enum PlaylistParser {
 
     private static func lockupChannel(from lockup: [String: Any]) -> String? {
         guard let metadata = lockup["metadata"] as? [String: Any],
-              let model = metadata["lockupMetadataViewModel"] as? [String: Any],
-              let contentMetadata = model["metadata"] as? [String: Any],
-              let viewModel = contentMetadata["contentMetadataViewModel"] as? [String: Any],
-              let rows = viewModel["metadataRows"] as? [[String: Any]],
-              let parts = rows.first?["metadataParts"] as? [[String: Any]],
-              let text = parts.first?["text"] as? [String: Any],
-              let content = text["content"] as? String
+              let model = metadata["lockupMetadataViewModel"] as? [String: Any]
         else { return nil }
-        return content
+
+        // The avatar's accessibility label is the most reliable source:
+        // "Go to channel 3Blue1Brown". Some layouts omit the channel from the
+        // metadata rows entirely and only keep views + date there.
+        if let image = model["image"] as? [String: Any],
+           let avatar = image["decoratedAvatarViewModel"] as? [String: Any],
+           let label = avatar["a11yLabel"] as? String {
+            let name = label
+                .replacingOccurrences(of: "Go to channel ", with: "")
+                .replacingOccurrences(of: "Channel: ", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !name.isEmpty, !looksLikeCount(name) { return name }
+        }
+
+        guard let contentMetadata = model["metadata"] as? [String: Any],
+              let viewModel = contentMetadata["contentMetadataViewModel"] as? [String: Any],
+              let rows = viewModel["metadataRows"] as? [[String: Any]]
+        else { return nil }
+
+        let texts: [String] = rows
+            .flatMap { ($0["metadataParts"] as? [[String: Any]]) ?? [] }
+            .compactMap { part in
+                (part["text"] as? [String: Any])?["content"] as? String
+            }
+        return texts.first(where: { !looksLikeCount($0) }) ?? texts.first
     }
 
     private static func lockupDuration(from lockup: [String: Any]) -> Int? {
@@ -199,15 +221,14 @@ enum PlaylistParser {
         return nil
     }
 
-    private static func hasContinuation(_ node: Any) -> Bool {
-        if let dictionary = node as? [String: Any] {
-            if dictionary["continuationCommand"] != nil { return true }
-            return dictionary.values.contains { hasContinuation($0) }
-        }
-        if let array = node as? [Any] {
-            return array.contains { hasContinuation($0) }
-        }
-        return false
+    static func looksLikeCount(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        if lowered.hasSuffix("views") || lowered.hasSuffix("view") { return true }
+        if lowered.hasSuffix("videos") || lowered.hasSuffix("video") { return true }
+        if lowered.hasSuffix("chapters") || lowered.hasSuffix("chapter") { return true }
+        if lowered.hasSuffix("ago") { return true }
+        let head = lowered.split(separator: " ").first.map(String.init) ?? ""
+        return head.range(of: #"^\d+(\.\d+)?[kmb]?$"#, options: .regularExpression) != nil
     }
 
     private static func pageTitle(from html: String) -> String? {

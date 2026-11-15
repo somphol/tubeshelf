@@ -141,22 +141,26 @@ unwatched, which is the honest default.
 
 ## Playlists
 
-**Add Playlist…** (**⇧⌘N**) reads a public or unlisted playlist, lists every video
-with its channel and length, marks the ones already on your shelf, and adds only
-the ones you tick.
+Two independent actions, both in the toolbar's playlist menu and the File menu:
 
-Every row has a full category editor before anything is added: multiple
-categories, the same type-ahead field as the rest of the app (**including creating
-a new category**), and **Suggest again**, which fetches the video's real
-description and re-runs the classifier — the initial pre-fill only has the title,
-because a playlist page carries no descriptions. Nothing is filed until you press
-Add, and the categories you see are exactly what gets written. A separate field
-adds one category to every selected video in a single step.
+- **Add Videos from Playlist…** (**⇧⌘N**) — review every video, edit its categories,
+  add the ones you tick to the shelf. It never touches the catalog.
+- **Add Playlist to Catalog…** (**⇧⌘⌥N**) — keep a public or unlisted playlist as a
+  *course*: title, channel and ordered chapters. Adds no videos.
 
-Private playlists — Watch later, Liked videos, anything without a share link —
-cannot be read without signing in, so the sheet will say the playlist does not
-exist. A single fetch returns the first batch (YouTube ships about 100); longer
-playlists are flagged as partial rather than silently truncated.
+The catalog (**⌘⇧L**, or the Playlists section in the sidebar) is a shelf of
+courses. Each entry keeps its chapter order offline, shows `3 / 16` progress, and
+opens a detail view where you can tick chapters, **Add missing** (opens the review
+sheet for that playlist), **Present** the chapters you already have in order, or
+remove the course without touching any video.
+
+Progress belongs to the playlist, not the shelf: ticking a chapter marks the
+shelf's copy watched when it exists, but a course can be tracked without filing
+every video. Backups carry the catalog alongside the library; older backups still
+restore.
+
+Limits: public and unlisted only (private playlists, Watch later and Liked cannot
+be read), roughly 100 chapters per fetch, and refresh is manual for now.
 
 ## Profiles
 

@@ -72,7 +72,7 @@ struct DeckView: View {
             .keyboardShortcut(.escape, modifiers: [])
             .help("Back to the shelf (esc)")
 
-            Text(model.filter.title)
+            Text(model.deckTitle ?? model.filter.title)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
                 .lineLimit(1)

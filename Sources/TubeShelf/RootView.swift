@@ -25,12 +25,18 @@ struct RootView: View {
                     .help("Browse channels (⇧⌘K)")
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        model.openPlaylistImport()
+                    Menu {
+                        Button("Add Videos from Playlist…") { model.openPlaylistImport() }
+                        Button("Add Playlist to Catalog…") { model.isAddPlaylistToCatalogPresented = true }
+                        Divider()
+                        Button("Open Playlist Catalog…") { model.openPlaylistCatalog() }
                     } label: {
-                        Label("Add playlist", systemImage: "list.bullet.rectangle")
+                        Label("Playlists", systemImage: "list.bullet.rectangle")
                     }
-                    .help("Add every video from a playlist (⇧⌘N)")
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("Playlist videos, or keep a playlist as a course (⇧⌘N)")
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -63,6 +69,12 @@ struct RootView: View {
         }
         .sheet(isPresented: $model.isPlaylistImportPresented) {
             PlaylistImportSheet(model: model)
+        }
+        .sheet(isPresented: $model.isPlaylistCatalogPresented) {
+            PlaylistCatalogView(model: model)
+        }
+        .sheet(isPresented: $model.isAddPlaylistToCatalogPresented) {
+            AddPlaylistToCatalogSheet(model: model)
         }
         .sheet(isPresented: Binding(
             get: { model.editingVideoID != nil },
@@ -171,6 +183,51 @@ struct SidebarView: View {
                                 .font(.system(size: 9, weight: .semibold))
                             Text("Pinned")
                             Spacer(minLength: 0)
+                        }
+                    }
+                }
+
+                if !model.playlists.isEmpty {
+                    Section {
+                        ForEach(model.playlists.prefix(5)) { record in
+                            Button {
+                                model.openPlaylistCatalog(id: record.id)
+                            } label: {
+                                HStack(spacing: 7) {
+                                    Image(systemName: "list.bullet.rectangle")
+                                        .font(.system(size: 11))
+                                        .frame(width: 17)
+                                        .foregroundStyle(.secondary)
+                                    Text(record.title)
+                                        .font(.system(size: 12.5))
+                                        .lineLimit(1)
+                                    Spacer(minLength: 4)
+                                    Text("\(record.chapterCount)")
+                                        .font(.system(size: 10.5).monospacedDigit())
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(.vertical, 2)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(record.title)
+                        }
+                    } header: {
+                        HStack(spacing: 4) {
+                            Text("Playlists")
+                            Spacer(minLength: 0)
+                            Button {
+                                model.openPlaylistCatalog()
+                            } label: {
+                                HStack(spacing: 2) {
+                                    Text("All \(model.playlists.count)")
+                                        .font(.system(size: 9.5, weight: .medium))
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 7, weight: .bold))
+                                }
+                            }
+                            .buttonStyle(.link)
+                            .help("Open the playlist catalog")
                         }
                     }
                 }

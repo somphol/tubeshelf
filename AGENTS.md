@@ -88,11 +88,20 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **The two playlist commands are independent on purpose.** Importing videos must
+  not write the catalog; cataloging must not add videos. Do not "helpfully" join
+  them again.
+- **`PlaylistRecord` stores a chapter snapshot and its own ticks.**
+  `watchedItemIDs` is per playlist; ticking also sets the shelf's watch state when
+  the video exists. `replaceItems` drops ticks for chapters that disappeared.
 - **Playlist import reads `ytInitialData`, never an API key.** Support both the
   legacy `playlistVideoRenderer` and the current `lockupViewModel` markup; YouTube
   changes this. Private playlists return zero items by design — never add cookie
   auth to work around it. One page ships ~100 items, so a continuation token means
-  "partial", not "complete".
+  "partial", not "complete" (a continuation token is present on unrelated
+  shelves, so trust the item count: 100 means there may be more). Channels come
+  from the avatar's accessibility label, not from metadata rows, which often hold
+  only views and a date.
 - **Playlist categories are reviewed, never guessed at add time.** Rows pre-fill
   from `HeuristicTagger` on the title only (a playlist page has no descriptions);
   the per-row editor can fetch metadata and re-run `TagEngine`, and import writes

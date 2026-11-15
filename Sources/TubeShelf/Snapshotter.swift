@@ -51,6 +51,30 @@ enum Snapshotter {
             case "playlist":
                 model.playlistImportPrefill = SnapshotConfig.playlistPrefill
                 model.isPlaylistImportPresented = true
+            case "catalog", "catalog-detail":
+                let items = (0..<16).map { index in
+                    PlaylistItem(
+                        videoID: String(format: "vid%08d", index),
+                        title: "Chapter \(index + 1) · Essence of linear algebra",
+                        channel: "3Blue1Brown",
+                        durationSeconds: 600 + index * 120
+                    )
+                }
+                let metadata = PlaylistMetadata(
+                    playlistID: "PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+                    title: "Essence of linear algebra",
+                    items: items,
+                    truncated: false
+                )
+                let record = model.catalogPlaylist(metadata)
+                for index in 0..<3 {
+                    let id = items[index].videoID
+                    if model.playlist(id: record.id)?.isWatched(id) == false {
+                        model.toggleChapter(playlistID: record.id, videoID: id)
+                    }
+                }
+                model.openPlaylistCatalog(id: mode == "catalog-detail" ? record.id : nil)
+
             case "playlist-editor":
                 let item = PlaylistItem(
                     videoID: "kuOxDh3egN0",

@@ -105,7 +105,7 @@ final class PlaylistTests: XCTestCase {
         XCTAssertEqual(metadata.items[0].title, "Why is calculus so ... EASY ?")
         XCTAssertEqual(metadata.items[0].channel, "Mathologer")
         XCTAssertEqual(metadata.items[0].durationSeconds, 2312)
-        XCTAssertTrue(metadata.truncated, "a continuation token means there are more items")
+        XCTAssertFalse(metadata.truncated, "a short playlist is complete, not a truncated page")
     }
 
     func testRespectsTheLimitAndFlagsTruncation() throws {
@@ -124,6 +124,64 @@ final class PlaylistTests: XCTestCase {
         ) { error in
             XCTAssertEqual(error as? PlaylistError, .unreadable)
         }
+    }
+
+    func testChannelIsNotAViewCount() throws {
+        func lockup(_ id: String, channel: String, views: String) -> [String: Any] {
+            [
+                "contentId": id,
+                "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+                "metadata": [
+                    "lockupMetadataViewModel": [
+                        "title": ["content": "Chapter"],
+                        "image": [
+                            "decoratedAvatarViewModel": [
+                                "a11yLabel": "Go to channel \(channel)"
+                            ]
+                        ],
+                        "metadata": [
+                            "contentMetadataViewModel": [
+                                "metadataRows": [[
+                                    "metadataParts": [
+                                        ["text": ["content": views]],
+                                        ["text": ["content": channel]]
+                                    ]
+                                ]]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        }
+
+        let page: [String: Any] = [
+            "contents": ["items": [
+                ["lockupViewModel": lockup("kuOxDh3egN0", channel: "3Blue1Brown", views: "13M views")],
+                ["lockupViewModel": lockup("dQw4w9WgXcQ", channel: "Rick Astley", views: "1.7B views")]
+            ]]
+        ]
+
+        let metadata = try PlaylistParser.parse(
+            html: try html(with: page), playlistID: "PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab", limit: 200
+        )
+        XCTAssertEqual(metadata.items[0].channel, "3Blue1Brown")
+        XCTAssertEqual(metadata.items[1].channel, "Rick Astley")
+    }
+
+    func testTruncatedOnlyWhenThePageBatchIsFull() throws {
+        let items = (0..<100).map { index -> [String: Any] in
+            ["lockupViewModel": [
+                "contentId": "vid\(String(format: "%08d", index))",
+                "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+                "metadata": ["lockupMetadataViewModel": ["title": ["content": "Item \(index)"]]]
+            ]]
+        }
+        let page: [String: Any] = ["contents": ["items": items]]
+        let metadata = try PlaylistParser.parse(
+            html: try html(with: page), playlistID: "PL1234567890", limit: 200
+        )
+        XCTAssertEqual(metadata.items.count, 100)
+        XCTAssertTrue(metadata.truncated)
     }
 
     func testDurationsAddedByHand() {

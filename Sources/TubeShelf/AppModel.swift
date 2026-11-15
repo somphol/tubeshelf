@@ -22,6 +22,10 @@ final class AppModel {
     var isCategoryManagerPresented = false
     var isChannelBrowserPresented = false
     var isPlaylistImportPresented = false
+    var isPlaylistCatalogPresented = false
+    var isAddPlaylistToCatalogPresented = false
+    var pendingPlaylistID: String?
+    var deckTitle: String?
     /// Used by the debug snapshot mode to open the sheet with a playlist ready.
     var playlistImportPrefill: String?
     var pageIndex = 0
@@ -45,6 +49,8 @@ final class AppModel {
     }
 
     var store: LibraryStore
+    var playlistStore: PlaylistStore
+    var playlists: [PlaylistRecord] = []
     let profileStore: ProfileStore
     var profiles: [Profile]
     var activeProfileID: UUID
@@ -79,8 +85,10 @@ final class AppModel {
 
         self.profiles = loaded
         self.activeProfileID = active?.id ?? UUID()
+        let activeDirectory = active.map { profileStore.directory(for: $0) } ?? profileStore.root
         self.store = active.map { profileStore.libraryStore(for: $0) }
             ?? LibraryStore(directory: profileStore.root)
+        self.playlistStore = PlaylistStore(directory: activeDirectory)
         self.library = Library()
 
         if let active {
@@ -90,6 +98,7 @@ final class AppModel {
             } catch {
                 self.toast = "Could not read \(active.name): \(error.localizedDescription)"
             }
+            self.playlists = (try? self.playlistStore.load()) ?? []
         } else {
             self.toast = "Could not open your profiles: using an empty shelf"
         }
@@ -136,6 +145,8 @@ final class AppModel {
 
         save()
         store = profileStore.libraryStore(for: profile)
+        playlistStore = PlaylistStore(directory: profileStore.directory(for: profile))
+        playlists = (try? playlistStore.load()) ?? []
         activeProfileID = id
         Preferences.activeProfileID = id.uuidString
 
@@ -362,6 +373,7 @@ final class AppModel {
         guard !slides.isEmpty else { return }
         deckFilter = filter
         deckQuery = query
+        deckTitle = filter.title
         deck = DeckModel(slides: slides, startAt: video.id)
     }
 
@@ -374,6 +386,101 @@ final class AppModel {
 
     func closeDeck() {
         deck = nil
+        deckTitle = nil
+    }
+
+    // MARK: - Playlist catalog
+
+    func playlist(id: String) -> PlaylistRecord? {
+        playlists.first { $0.id == id }
+    }
+
+    func openPlaylistCatalog(id: String? = nil) {
+        pendingPlaylistID = id
+        isPlaylistCatalogPresented = true
+    }
+
+    /// Saves a fetched playlist as a course. Re-adding updates the chapter list
+    /// while keeping ticks for chapters that still exist.
+    @discardableResult
+    func catalogPlaylist(_ metadata: PlaylistMetadata) -> PlaylistRecord {
+        if var existing = playlist(id: metadata.playlistID) {
+            existing.title = metadata.title
+            existing.channel = metadata.channel
+            existing.replaceItems(metadata.items)
+            existing.isTruncated = metadata.truncated
+            if let index = playlists.firstIndex(where: { $0.id == existing.id }) {
+                playlists[index] = existing
+            }
+            savePlaylists()
+            flash("Updated \(existing.title)")
+            return existing
+        }
+
+        let record = PlaylistRecord(
+            id: metadata.playlistID,
+            title: metadata.title,
+            channel: metadata.channel,
+            items: metadata.items,
+            isTruncated: metadata.truncated
+        )
+        playlists.insert(record, at: 0)
+        savePlaylists()
+        flash("Saved \(record.title) to the catalog")
+        return record
+    }
+
+    func removePlaylist(id: String) {
+        playlists.removeAll { $0.id == id }
+        savePlaylists()
+        flash("Removed from the catalog")
+    }
+
+    /// Per-playlist progress; ticking a chapter that is on the shelf also marks
+    /// that video watched there.
+    func toggleChapter(playlistID: String, videoID: String) {
+        guard let index = playlists.firstIndex(where: { $0.id == playlistID }) else { return }
+        let watched = !playlists[index].isWatched(videoID)
+        playlists[index].setWatched(watched, videoID: videoID)
+        if let video = library.video(youtubeID: videoID) {
+            library.setWatchStatus(watched ? .done : .unwatched, for: video.id)
+        }
+        savePlaylists()
+        save()
+        refreshDeck()
+        if let record = playlist(id: playlistID) {
+            flash("\(record.watchedCount) of \(record.chapterCount) watched")
+        }
+    }
+
+    /// Presents the chapters that are already on the shelf, in playlist order.
+    func presentPlaylist(_ record: PlaylistRecord) {
+        let slides = record.items.compactMap { library.video(youtubeID: $0.videoID) }
+        guard let first = slides.first else {
+            flash("Add a chapter to the shelf first")
+            return
+        }
+        deckTitle = record.title
+        deck = DeckModel(slides: slides, startAt: first.id)
+        isPlaylistCatalogPresented = false
+    }
+
+    func addMissingVideos(from record: PlaylistRecord) {
+        guard let url = record.shareURL?.absoluteString else { return }
+        playlistImportPrefill = url
+        isPlaylistCatalogPresented = false
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            self?.isPlaylistImportPresented = true
+        }
+    }
+
+    func savePlaylists() {
+        do {
+            try playlistStore.save(playlists)
+        } catch {
+            flash("Could not save the playlist catalog: \(error.localizedDescription)")
+        }
     }
 
     func revealVideo(_ video: Video) {
@@ -566,14 +673,15 @@ final class AppModel {
 
     @discardableResult
     func backup(to url: URL) throws -> Int {
-        try BackupService().write(library, to: url)
+        try BackupService().write(library, playlists: playlists, to: url)
         flash("Backed up \(library.count) video\(library.count == 1 ? "" : "s")")
         return library.count
     }
 
     @discardableResult
     func restore(from url: URL) throws -> Int {
-        let incoming = try BackupService().read(from: url)
+        let contents = try BackupService().readContents(from: url)
+        let incoming = contents.library
 
         // Keep the outgoing library beside the store so choosing the wrong file
         // is always recoverable.
@@ -585,6 +693,8 @@ final class AppModel {
         }
 
         library = incoming
+        playlists = contents.playlists
+        savePlaylists()
         filter = .all
         query = ""
         sidebarQuery = ""

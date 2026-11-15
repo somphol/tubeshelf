@@ -29,6 +29,7 @@ public struct ShelfBackup {
         let version: Int
         let exportedAt: Date
         let library: Library
+        let playlists: [PlaylistRecord]?
     }
 
     private struct Probe: Decodable {
@@ -48,14 +49,49 @@ public struct ShelfBackup {
         return decoder
     }
 
-    public static func encode(_ library: Library, exportedAt: Date = Date()) throws -> Data {
+    public static func encode(
+        _ library: Library,
+        playlists: [PlaylistRecord] = [],
+        exportedAt: Date = Date()
+    ) throws -> Data {
         let envelope = Envelope(
             format: format,
             version: version,
             exportedAt: exportedAt,
-            library: library
+            library: library,
+            playlists: playlists.isEmpty ? nil : playlists
         )
         return try encoder().encode(envelope)
+    }
+
+    /// Library plus catalog, when a backup carries one.
+    public static func decodeContents(_ data: Data) throws -> (library: Library, playlists: [PlaylistRecord]) {
+        guard !data.isEmpty else { throw BackupError.empty }
+
+        let probe = try? decoder().decode(Probe.self, from: data)
+        if let marker = probe?.format {
+            guard marker == format else { throw BackupError.notABackup }
+            let envelope: Envelope
+            do {
+                envelope = try decoder().decode(Envelope.self, from: data)
+            } catch {
+                throw BackupError.notABackup
+            }
+            guard envelope.version <= version else {
+                throw BackupError.newerVersion(envelope.version)
+            }
+            return (envelope.library, envelope.playlists ?? [])
+        }
+
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              object["videos"] is [Any]
+        else { throw BackupError.notABackup }
+
+        do {
+            return (try decoder().decode(Library.self, from: data), [])
+        } catch {
+            throw BackupError.notABackup
+        }
     }
 
     public static func decode(_ data: Data) throws -> Library {
@@ -125,8 +161,8 @@ public struct ShelfBackup {
 public struct BackupService: Sendable {
     public init() {}
 
-    public func write(_ library: Library, to url: URL) throws {
-        let data = try ShelfBackup.encode(library)
+    public func write(_ library: Library, playlists: [PlaylistRecord] = [], to url: URL) throws {
+        let data = try ShelfBackup.encode(library, playlists: playlists)
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true
@@ -135,7 +171,11 @@ public struct BackupService: Sendable {
     }
 
     public func read(from url: URL) throws -> Library {
+        try readContents(from: url).library
+    }
+
+    public func readContents(from url: URL) throws -> (library: Library, playlists: [PlaylistRecord]) {
         let data = try Data(contentsOf: url)
-        return try ShelfBackup.decode(data)
+        return try ShelfBackup.decodeContents(data)
     }
 }

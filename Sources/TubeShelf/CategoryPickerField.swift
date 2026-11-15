@@ -13,6 +13,7 @@ struct CategoryPickerField: View {
     let model: AppModel
     var applied: [String]
     var placeholder: String = "Type a new category, or pick one…"
+    var autoFocus: Bool = false
     var onAdd: (String) -> Void
 
     @State private var text = ""
@@ -155,6 +156,9 @@ struct CategoryPickerField: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            if autoFocus { focused = true }
         }
         #if DEBUG
         .onAppear {

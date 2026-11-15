@@ -154,6 +154,19 @@ enum Snapshotter {
                     model.selectedVideoIDs.insert(video.id)
                 }
 
+            case "bulk-add":
+                let seeds: [(String, String, [String])] = [
+                    ("vid00000201", "Linear algebra, chapter one", ["Math"]),
+                    ("vid00000202", "Linear algebra, chapter two", ["Math"]),
+                    ("vid00000203", "Sourdough starter", ["Cooking"])
+                ]
+                for (id, title, tags) in seeds {
+                    model.add(Video(youtubeID: id, title: title, channel: "Demo", tags: tags))
+                }
+                model.isSelecting = true
+                for video in model.visibleVideos { model.selectedVideoIDs.insert(video.id) }
+                model.isBulkAddPresented = true
+
             case "tidy":
                 let seeds: [(String, String, [String])] = [
                     ("vid00000101", "Car review: the new one", ["Cars"]),

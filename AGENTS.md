@@ -88,6 +88,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Bulk category actions are dialogs, never flat menus.** `BulkCategorySheet`
+  reuses `CategoryPickerField` (type-ahead + create, autofocused) and
+  `BulkRemoveCategorySheet` filters and sorts only the selection's categories.
+  A thousand-category menu is unusable; do not put lists back into the menu.
 - **Bulk selection is a mode, and it is cleared aggressively.** `isSelecting` +
   `selectedVideoIDs`; `select(_:)` and any query change reset it, deletes prune it,
   and courses are non-selectable. The undo snapshot lives in `AppModel.pendingUndo`

@@ -5,7 +5,6 @@ import TubeShelfCore
 struct ShelfView: View {
     let model: AppModel
 
-    @State private var showBulkCategory = false
     @State private var confirmBulkRemove = false
 
     private var columns: [GridItem] {
@@ -133,21 +132,9 @@ struct ShelfView: View {
                 .foregroundStyle(model.selectedCount == 0 ? Color.secondary : Theme.accent)
 
             Menu {
-                Menu("Add to…") {
-                    ForEach(model.categoryChoices, id: \.self) { name in
-                        Button(name) { model.bulkAddTag(name) }
-                    }
-                    Divider()
-                    Button("New Category…") { showBulkCategory = true }
-                }
-                Menu("Remove from…") {
-                    if model.categoriesInSelection.isEmpty {
-                        Text("No categories in the selection")
-                    }
-                    ForEach(model.categoriesInSelection, id: \.self) { name in
-                        Button(name) { model.bulkRemoveTag(name) }
-                    }
-                }
+                Button("Add categories…") { model.isBulkAddPresented = true }
+                Button("Remove categories…") { model.isBulkRemovePresented = true }
+                    .disabled(model.categoriesInSelection.isEmpty)
                 Divider()
                 Button("Favorite") { model.bulkSetFavorite(true) }
                 Button("Mark watched") { model.bulkToggleWatched() }
@@ -176,8 +163,17 @@ struct ShelfView: View {
                 .buttonStyle(.link)
                 .font(.system(size: 10.5))
         }
-        .sheet(isPresented: $showBulkCategory) {
+        .sheet(isPresented: Binding(
+            get: { model.isBulkAddPresented },
+            set: { model.isBulkAddPresented = $0 }
+        )) {
             BulkCategorySheet(model: model)
+        }
+        .sheet(isPresented: Binding(
+            get: { model.isBulkRemovePresented },
+            set: { model.isBulkRemovePresented = $0 }
+        )) {
+            BulkRemoveCategorySheet(model: model)
         }
         .alert("Remove \(model.selectedCount) video\(model.selectedCount == 1 ? "" : "s")?", isPresented: $confirmBulkRemove) {
             Button("Cancel", role: .cancel) {}

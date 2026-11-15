@@ -58,6 +58,8 @@ final class AppModel {
     var isPlaylistImportPresented = false
     var isPlaylistCatalogPresented = false
     var isTidyPresented = false
+    var isBulkAddPresented = false
+    var isBulkRemovePresented = false
 
     var spotlightEnabled: Bool = Preferences.spotlightEnabled {
         didSet {

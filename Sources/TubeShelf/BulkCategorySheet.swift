@@ -35,7 +35,7 @@ struct BulkCategorySheet: View {
                     }
                 }
 
-                CategoryPickerField(model: model, applied: tags) { tag in
+                CategoryPickerField(model: model, applied: tags, autoFocus: true) { tag in
                     tags = TagNormalizer.merge(tags + [tag])
                 }
             }

@@ -151,9 +151,15 @@ unwatched, which is the honest default.
 
 **Select** in the toolbar (**⌘⇧A**) or **⌘-click** a card. Checkboxes appear on every
 video; clicking toggles, **⇧-click** extends a range, **⌘A** takes the page, and
-**Esc** leaves. A prominent **Bulk Update (N)** control in the header adds or
-removes categories (including creating a new one), favorites, marks watched, or
-removes from the shelf after a confirmation; *Select page* and *Done* sit beside it.
+**Esc** leaves. A prominent **Bulk Update (N)** control in the header opens a menu
+with *Add categories…*, *Remove categories…*, Favorite, Mark watched and
+*Remove from shelf…*; *Select page* and *Done* sit beside it.
+
+The category actions open a dialog rather than a flat list: **Add** is the normal
+type-ahead picker (type to filter, **Create “…”** at the top of the matches,
+existing categories with counts), and **Remove** is a searchable, sortable list of
+only the categories present in the selection. With hundreds of categories, typing
+is the way in.
 
 The selection survives paging and is cleared when the category, search or profile
 changes, so you can't bulk-edit things you can no longer see. Tag, favorite and

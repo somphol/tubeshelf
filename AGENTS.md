@@ -362,10 +362,11 @@ per device. Local `save()` already writes every mutation. The companion web app'
   from the public repo <https://github.com/somphol/tubeshelf-web-ro>. It must only
   ever hold code and a public demo; the backup format contract is in its
   `PLAN.md` / `format.schema.json`. Update both when the envelope changes.
-- Editable web app (phase 1) is at
-  <https://somphol.github.io/tubeshelf-web-rw/>, from the public repo
-  <https://github.com/somphol/tubeshelf-web-rw>. It edits backups in the browser
-  and exports new timestamped files; Google Drive sync/autosave is planned.
+- Editable web app is at <https://somphol.github.io/tubeshelf-web-rw/>, from the
+  public repo <https://github.com/somphol/tubeshelf-web-rw>. It edits backups in
+  the browser, exports timestamped files, and has optional Google Drive
+  open/save with hourly change-only autosave plus local snapshot fallback. Drive
+  needs each user's own OAuth client; live OAuth is not verified in-repo.
   **Cross-repo rule:** when `TagTaxonomy` changes, run
   `python3 scripts/sync-taxonomy.py` in that repo and commit the generated
   `taxonomy.json`/`taxonomy.js`. When the backup format changes, update the RW

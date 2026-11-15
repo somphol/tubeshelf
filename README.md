@@ -30,9 +30,10 @@ see [DISCLAIMER.md](DISCLAIMER.md). Keep your own backups.
 
 - **Read-only viewer:** <https://somphol.github.io/tubeshelf-web-ro/> — load a
   backup and browse it; nothing is uploaded.
-- **Editable web app (phase 1):**
+- **Editable web app:**
   <https://somphol.github.io/tubeshelf-web-rw/> — load a backup, edit videos and
-  categories, add links, export a new backup. Google Drive sync is planned.
+  categories, add links, export a new backup, and optionally open/save through
+  Google Drive with hourly autosave and local snapshot fallback.
   Source: <https://github.com/somphol/tubeshelf-web-rw>. The repo carries its own
   handoff (`AGENTS.md`) and plan (`PLAN.md`).
 

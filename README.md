@@ -284,6 +284,12 @@ the file like any other. With several accounts you pick once and the choice is
 remembered. If Drive is not installed the button stays disabled and Settings links
 to the download.
 
+The editable web companion reuses this exact folder. In its **Automatic** Drive
+mode it opens the newest backup from `My Drive/TubeShelf Backups` and saves new
+timestamped files there; Drive for Desktop carries them to the Mac, so the daily
+Mac ↔ web loop needs no download or upload. Automatic is the reliable mode for
+Mac-created files. Setup: [tubeshelf-web-rw/DRIVE.md](https://github.com/somphol/tubeshelf-web-rw/blob/main/DRIVE.md).
+
 Every video keeps the exact moment it was saved — an instant, not a wall time —
 and the deck shows it as `14 Nov 2026, 19:32 PST`. Because it is stored as an
 instant, a backup restored in another timezone still reads correctly, and the

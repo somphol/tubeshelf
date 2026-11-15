@@ -48,19 +48,26 @@ public struct YouTubeMetadataService: Sendable {
     public func fetch(videoID: String) async throws -> VideoMetadata {
         guard YouTubeURL.isVideoID(videoID) else { throw MetadataError.notAYouTubeLink }
 
-        let oembed = try await fetchOEmbed(videoID: videoID)
+        let oembed = try? await fetchOEmbed(videoID: videoID)
+        let page = try? await fetchWatchPage(videoID: videoID)
+
+        // oEmbed answers 401 for videos that disallow embedding, even when the
+        // watch page plays fine. Fall back to that page for title and channel.
+        let title = oembed?.title ?? page.flatMap(MetaScraper.title(fromHTML:))
+        let channel = oembed?.author_name ?? page.flatMap(MetaScraper.channel(fromHTML:))
+        guard let title, let channel else { throw MetadataError.videoUnavailable }
 
         var description = ""
         var duration: Int?
-        if let page = try? await fetchWatchPage(videoID: videoID) {
+        if let page {
             description = MetaScraper.description(fromHTML: page) ?? ""
             duration = MetaScraper.durationSeconds(fromHTML: page)
         }
 
         return VideoMetadata(
             videoID: videoID,
-            title: oembed.title,
-            channel: oembed.author_name,
+            title: title,
+            channel: channel,
             description: description,
             durationSeconds: duration
         )
@@ -111,6 +118,38 @@ public struct YouTubeMetadataService: Sendable {
 
 /// Small, forgiving scrapers. Every one of them returns nil rather than guessing.
 enum MetaScraper {
+    static func title(fromHTML html: String) -> String? {
+        if let raw = firstCapture(#"<meta property="og:title" content="([^"]*)""#, in: html) {
+            let decoded = decodeHTMLEntities(raw)
+            if !decoded.isEmpty { return decoded }
+        }
+        if let raw = firstCapture(#""title":"((?:[^"\\]|\\.)*)""#, in: html),
+           let decoded = decodeJSONString(raw),
+           !decoded.isEmpty {
+            return decoded
+        }
+        return nil
+    }
+
+    static func channel(fromHTML html: String) -> String? {
+        let jsonPatterns = [
+            #""ownerChannelName":"((?:[^"\\]|\\.)*)""#,
+            #""author":"((?:[^"\\]|\\.)*)""#
+        ]
+        for pattern in jsonPatterns {
+            if let raw = firstCapture(pattern, in: html),
+               let decoded = decodeJSONString(raw),
+               !decoded.isEmpty {
+                return decoded
+            }
+        }
+        if let raw = firstCapture(#"<link itemprop="name" content="([^"]*)""#, in: html) {
+            let decoded = decodeHTMLEntities(raw)
+            return decoded.isEmpty ? nil : decoded
+        }
+        return nil
+    }
+
     static func description(fromHTML html: String) -> String? {
         if let raw = firstCapture(#""shortDescription":"((?:[^"\\]|\\.)*)""#, in: html),
            let decoded = decodeJSONString(raw),

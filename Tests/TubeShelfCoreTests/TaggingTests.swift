@@ -131,6 +131,25 @@ final class TaggingTests: XCTestCase {
         XCTAssertTrue(credits.tags.contains("Programming"))
     }
 
+    func testBareLanguageDoesNotImplyLanguageLearning() {
+        let tagger = HeuristicTagger()
+        // The Stanford LLM lecture mentions "language" and "learning", but this
+        // is AI, not foreign-language study.
+        let lecture = tagger.suggest(
+            title: "Stanford CS229 I Machine Learning I Building Large Language Models (LLMs)",
+            channel: "Stanford Online"
+        )
+        XCTAssertTrue(lecture.tags.contains("AI & Machine Learning"), "\(lecture.tags)")
+        XCTAssertFalse(lecture.tags.contains("Language Learning"), "\(lecture.tags)")
+
+        XCTAssertTrue(
+            tagger.suggest(title: "Learn Japanese: grammar for beginners").tags.contains("Language Learning")
+        )
+        XCTAssertTrue(
+            tagger.suggest(title: "How to learn a language in 30 days").tags.contains("Language Learning")
+        )
+    }
+
     func testSuggestionsStayCloseToTheTopHit() {
         // One strong category must not drag along near-miss categories.
         let suggestion = HeuristicTagger().suggest(

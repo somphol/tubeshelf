@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 62 unit tests
+swift test                                   # 127 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -53,8 +53,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **YouTube identity is the 11-character video ID.** Duplicates are detected by
   ID. Never key a library entry off the pasted URL.
 - **No API key.** Metadata comes from `youtube.com/oembed`; description and
-  duration are scraped best-effort from the watch page. Do not add a
-  key-dependent path without a fallback.
+  duration are scraped best-effort from the watch page. oEmbed answers **401 when
+  the uploader disabled embedding**, even though the watch page plays fine, so
+  title and channel fall back to `og:title` / `ownerChannelName` in that page.
+  Never make oEmbed the only path to a title.
 - **The grid is paginated; the deck is not.** `PageWindow` (Core) owns the maths
   and clamps a stale page, so deletions can never strand the view. `pageIndex`
   resets on filter/query/scope changes, and page size is a UI preference. The
@@ -271,8 +273,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - Keyword suggestions are precision-first: a video whose only signal is in the
   description lands in Unsorted rather than getting a loose tag.
 - Inline playback needs network access and a video that allows embedding.
-- Scraping depends on YouTube's private page markup; only description and
-  duration are at risk, never the title or channel.
+- Scraping depends on YouTube's private page markup. For embed-disabled videos
+  the watch page is also the only source of title and channel; if YouTube renames
+  `og:title` or `ownerChannelName`, the add sheet will report the video as
+  unavailable. `tubeshelf-check --fetch <link>` is the fastest way to confirm.
 
 ## Deferred ideas
 

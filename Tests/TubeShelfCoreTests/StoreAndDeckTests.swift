@@ -135,6 +135,17 @@ final class StoreAndDeckTests: XCTestCase {
         XCTAssertNil(MetaScraper.durationSeconds(fromHTML: "<html></html>"))
     }
 
+    func testMetadataScrapingFallsBackForEmbedDisabledVideos() {
+        let html = """
+        <html><head><meta property="og:title" content="Stanford CS229 I Machine Learning &amp; LLMs"></head>
+        <body>{"playableInEmbed":false,"ownerChannelName":"Stanford Online","lengthSeconds":"6271"}</body></html>
+        """
+        XCTAssertEqual(MetaScraper.title(fromHTML: html), "Stanford CS229 I Machine Learning & LLMs")
+        XCTAssertEqual(MetaScraper.channel(fromHTML: html), "Stanford Online")
+        XCTAssertNil(MetaScraper.title(fromHTML: "<html></html>"))
+        XCTAssertNil(MetaScraper.channel(fromHTML: "<html></html>"))
+    }
+
     func testOEmbedPayloadDecodes() throws {
         let json = """
         {"title":"Never Gonna Give You Up","author_name":"Rick Astley","thumbnail_url":"https://i.ytimg.com/vi/x/hq.jpg"}

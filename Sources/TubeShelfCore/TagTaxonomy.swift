@@ -185,10 +185,11 @@ public enum TagTaxonomy {
             "trauma", "attachment", "relationship"
         ]),
         VideoCategory(name: "Language Learning", symbol: "character.bubble", keywords: [
-            "language", "languages", "spanish", "french", "japanese", "korean", "chinese",
-            "mandarin", "thai", "german", "italian", "grammar", "vocabulary", "pronunciation",
-            "fluent", "duolingo", "learning english", "accent"
-        ]),
+            "language learning", "learn a language", "learning a language", "foreign language",
+            "spanish", "french", "japanese", "korean", "chinese", "mandarin", "thai", "german",
+            "italian", "grammar", "vocabulary", "pronunciation", "fluent", "duolingo",
+            "learning english", "accent"
+        ], weakKeywords: ["language", "languages"]),
         VideoCategory(name: "Talks & Podcasts", symbol: "mic", keywords: [
             "podcast", "episode", "interview", "fireside", "keynote", "ted talk",
             "tedx", "panel discussion", "q&a", "hosted by", "in conversation with"

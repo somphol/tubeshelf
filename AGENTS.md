@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 128 unit tests
+swift test                                   # 132 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -241,6 +241,13 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **Never mix model and keyword answers.** If Foundation Models returns one
   accurate category, keep exactly that; topping it up with heuristic guesses was
   removed on purpose because it made suggestions less relevant.
+- **A guest is a suggested tag, never a category.** `GuestNameExtractor` reads
+  conservative patterns only: a title prefix before a colon or pipe, "with /
+  feat. / featuring", "Guest:", "in conversation with / joined by", and an opening
+  "Name is aâ€¦" bio. It appends at most one name *after* the categories, rejects
+  show names, topics, acronyms and host names that overlap the channel, and never
+  replaces or reorders a category. Do not make it aggressive: a wrong person tag is
+  worse than a missing one.
 - **Persisted JSON is tolerant**: new fields use `decodeIfPresent`, dates are
   truncated to whole seconds for exact round-trips, and a corrupt file is moved
   aside, never overwritten.
@@ -281,6 +288,8 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - Keyword suggestions are precision-first: a video whose only signal is in the
   description lands in Unsorted rather than getting a loose tag.
 - Inline playback needs network access and a video that allows embedding.
+- Guest extraction only fires on the patterns above. An episode whose guest is
+  named halfway down the description, or only in artwork, gets no name tag.
 - Scraping depends on YouTube's private page markup. For embed-disabled videos
   the watch page is also the only source of title and channel; if YouTube renames
   `og:title` or `ownerChannelName`, the add sheet will report the video as

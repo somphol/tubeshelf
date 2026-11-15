@@ -163,6 +163,63 @@ final class TaggingTests: XCTestCase {
         XCTAssertFalse(suggestion.tags.contains("Music"))
     }
 
+    func testGuestNameFromTitlePrefixAndDescription() {
+        let extractor = GuestNameExtractor()
+        XCTAssertEqual(
+            extractor.guest(
+                title: "Marc Andreessen: The real AI boom hasn’t even started yet",
+                channel: "Lenny's Podcast",
+                description: "Marc Andreessen is a founder, investor, and co-founder of Netscape."
+            ),
+            "Marc Andreessen"
+        )
+        XCTAssertEqual(
+            extractor.guest(title: "Interview with Sam Altman", channel: "Talks at Google"),
+            "Sam Altman"
+        )
+        XCTAssertEqual(
+            extractor.guest(
+                title: "The next platform shift",
+                channel: "Lenny's Podcast",
+                description: "In conversation with Bret Taylor about agents."
+            ),
+            "Bret Taylor"
+        )
+    }
+
+    func testGuestNameRejectsHostsShowsAndTopics() {
+        let extractor = GuestNameExtractor()
+        // The host is the channel, not a guest.
+        XCTAssertNil(extractor.guest(title: "Huberman Lab: How to sleep", channel: "Huberman Lab"))
+        XCTAssertNil(extractor.guest(title: "Lex Fridman Podcast #400: AI", channel: "Lex Fridman"))
+        // A show name and a topic are not people.
+        XCTAssertNil(extractor.guest(title: "The Daily: A new election", channel: "The New York Times"))
+        XCTAssertNil(extractor.guest(title: "How to Build a Startup", channel: "Y Combinator"))
+        XCTAssertNil(extractor.guest(title: "AI & Machine Learning: What comes next", channel: "Stanford Online"))
+    }
+
+    func testGuestNameFromShowEpisodeDescription() {
+        // Episodes often carry the guest only in the opening bio, not the title.
+        XCTAssertEqual(
+            GuestNameExtractor().guest(
+                title: "Joe Rogan Experience #2501 - Marc Andreessen",
+                channel: "PowerfulJRE",
+                description: "Marc Andreessen is a co-founder and general partner at the venture capital firm Andreessen Horowitz."
+            ),
+            "Marc Andreessen"
+        )
+    }
+
+    func testGuestNameIsAppendedWithoutDisplacingCategories() async {
+        let suggestion = await TagEngine().suggest(
+            title: "Marc Andreessen: The real AI boom hasn’t even started yet",
+            channel: "Lenny's Podcast",
+            description: "Marc Andreessen is a founder, investor, and co-founder of Netscape."
+        )
+        XCTAssertTrue(suggestion.tags.contains("AI & Machine Learning"), "\(suggestion.tags)")
+        XCTAssertEqual(suggestion.tags.last, "Marc Andreessen", "\(suggestion.tags)")
+    }
+
     func testEngineFallsBackWithoutModel() async {
         // On a machine without Apple Intelligence this exercises the fallback
         // path; with it enabled the assertion still holds because the answer is

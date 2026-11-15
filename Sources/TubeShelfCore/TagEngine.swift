@@ -52,6 +52,34 @@ public struct TagEngine: Sendable {
         knownCategories: [String] = [],
         limit: Int = 3
     ) async -> TagSuggestion {
+        let base = await categorySuggestion(
+            title: title,
+            channel: channel,
+            description: description,
+            channelHint: channelHint,
+            knownCategories: knownCategories,
+            limit: limit
+        )
+        guard let guest = GuestNameExtractor().guest(
+            title: title,
+            channel: channel,
+            description: description
+        ), !base.tags.contains(where: { $0.caseInsensitiveCompare(guest) == .orderedSame })
+        else { return base }
+
+        // A person is a tag, not a category: it is appended after the categories
+        // and never displaces one.
+        return TagSuggestion(tags: base.tags + [guest], source: base.source, note: base.note)
+    }
+
+    private func categorySuggestion(
+        title: String,
+        channel: String,
+        description: String,
+        channelHint: String?,
+        knownCategories: [String],
+        limit: Int
+    ) async -> TagSuggestion {
         let heuristic = HeuristicTagger().suggest(
             title: title,
             channel: channel,

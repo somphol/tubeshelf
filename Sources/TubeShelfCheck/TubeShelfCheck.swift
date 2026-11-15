@@ -43,21 +43,32 @@ struct TubeShelfCheck {
             }
             if let index = arguments.firstIndex(of: "--backup"), index + 1 < arguments.count {
                 let library = try store.load()
+                let playlists = (try? PlaylistStore(directory: store.directory).load()) ?? []
                 let url = URL(fileURLWithPath: arguments[index + 1])
-                try BackupService().write(library, to: url)
-                print("Backed up \(library.count) videos → \(url.path)")
+                try BackupService().write(library, playlists: playlists, to: url)
+                print("Backed up \(library.count) videos and \(playlists.count) playlists → \(url.path)")
                 return
             }
             if let index = arguments.firstIndex(of: "--restore"), index + 1 < arguments.count {
                 let url = URL(fileURLWithPath: arguments[index + 1])
-                let incoming = try BackupService().read(from: url)
+                let contents = try BackupService().readContents(from: url)
+                let stamp = Int(Date().timeIntervalSince1970)
                 if let data = try? Data(contentsOf: store.fileURL) {
-                    let aside = store.directory
-                        .appendingPathComponent("library-before-restore-\(Int(Date().timeIntervalSince1970)).json")
-                    try? data.write(to: aside, options: .atomic)
+                    try? data.write(
+                        to: store.directory.appendingPathComponent("library-before-restore-\(stamp).json"),
+                        options: .atomic
+                    )
                 }
-                try store.save(incoming)
-                print("Restored \(incoming.count) videos ← \(url.path)")
+                let playlistStore = PlaylistStore(directory: store.directory)
+                if let data = try? Data(contentsOf: playlistStore.fileURL) {
+                    try? data.write(
+                        to: store.directory.appendingPathComponent("playlists-before-restore-\(stamp).json"),
+                        options: .atomic
+                    )
+                }
+                try store.save(contents.library)
+                try playlistStore.save(contents.playlists)
+                print("Restored \(contents.library.count) videos and \(contents.playlists.count) playlists ← \(url.path)")
                 return
             }
             if let index = arguments.firstIndex(of: "--pin"), index + 1 < arguments.count {

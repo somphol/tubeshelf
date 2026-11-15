@@ -36,20 +36,21 @@ enum BackupActions {
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        let incoming: Library
+        let contents: (library: Library, playlists: [PlaylistRecord])
         do {
-            incoming = try BackupService().read(from: url)
+            contents = try BackupService().readContents(from: url)
         } catch {
             model.flash("Restore failed: \(error.localizedDescription)")
             return
         }
+        let incoming = contents.library
 
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Restore \(incoming.count) video\(incoming.count == 1 ? "" : "s")?"
+        alert.messageText = "Restore \(incoming.count) video\(incoming.count == 1 ? "" : "s") and \(contents.playlists.count) playlist\(contents.playlists.count == 1 ? "" : "s")?"
         alert.informativeText = """
-        This replaces the current profile (“\(model.currentProfile?.name ?? "shelf")”, \(model.library.count) videos).
-        The current library is copied aside in Application Support before anything changes.
+        This replaces the current profile (“\(model.currentProfile?.name ?? "shelf")”, \(model.library.count) videos, \(model.playlists.count) playlists).
+        The current library and catalog are copied aside in Application Support before anything changes.
         """
         alert.addButton(withTitle: "Restore")
         alert.addButton(withTitle: "Cancel")
@@ -141,34 +142,41 @@ enum BackupActions {
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        let incoming: Library
+        let contents: (library: Library, playlists: [PlaylistRecord])
         do {
-            incoming = try BackupService().read(from: url)
+            contents = try BackupService().readContents(from: url)
         } catch {
             model.flash("That backup could not be read: \(error.localizedDescription)")
             return
         }
+        let incoming = contents.library
 
-        if incoming.count == 0 {
+        if incoming.count == 0, contents.playlists.isEmpty {
             let warning = NSAlert()
             warning.alertStyle = .warning
-            warning.messageText = "That backup contains no videos"
-            warning.informativeText = "“\(url.lastPathComponent)” is a valid TubeShelf file, but it has nothing in it. Add it as an empty profile anyway?"
+            warning.messageText = "That backup is empty"
+            warning.informativeText = "“\(url.lastPathComponent)” is a valid TubeShelf file, but it has no videos and no playlists. Add it as an empty profile anyway?"
             warning.addButton(withTitle: "Add Anyway")
             warning.addButton(withTitle: "Cancel")
             guard warning.runModal() == .alertFirstButtonReturn else { return }
         }
 
         let suggested = defaultProfileName(from: url)
+        let summary = "\(incoming.count) videos · \(contents.playlists.count) playlists · imported from \(url.lastPathComponent)"
         guard let name = promptForName(
             title: "Name this profile",
-            message: "\(incoming.count) videos · imported from \(url.lastPathComponent)",
+            message: summary,
             initial: suggested,
             action: "Add Profile"
         ) else { return }
 
         do {
-            try model.addProfile(name: name, library: incoming, importedFrom: url.lastPathComponent)
+            try model.addProfile(
+                name: name,
+                library: incoming,
+                playlists: contents.playlists,
+                importedFrom: url.lastPathComponent
+            )
             onCreated?()
         } catch {
             model.flash("Could not add the profile: \(error.localizedDescription)")

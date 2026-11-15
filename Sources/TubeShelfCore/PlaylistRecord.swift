@@ -14,6 +14,8 @@ public struct PlaylistRecord: Identifiable, Codable, Hashable, Sendable {
     /// state, so a course can be tracked without filing every video.
     public var watchedItemIDs: [String]
     public var isTruncated: Bool
+    /// Categories for the course itself, so it can sit beside videos in a category.
+    public var tags: [String]
 
     public init(
         id: String,
@@ -23,7 +25,8 @@ public struct PlaylistRecord: Identifiable, Codable, Hashable, Sendable {
         addedAt: Date = Date(),
         fetchedAt: Date = Date(),
         watchedItemIDs: [String] = [],
-        isTruncated: Bool = false
+        isTruncated: Bool = false,
+        tags: [String] = []
     ) {
         self.id = id
         self.title = title
@@ -33,6 +36,24 @@ public struct PlaylistRecord: Identifiable, Codable, Hashable, Sendable {
         self.fetchedAt = Video.normalized(fetchedAt)
         self.watchedItemIDs = watchedItemIDs
         self.isTruncated = isTruncated
+        self.tags = TagNormalizer.merge(tags)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, channel, items, addedAt, fetchedAt, watchedItemIDs, isTruncated, tags
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Playlist"
+        channel = try container.decodeIfPresent(String.self, forKey: .channel) ?? ""
+        items = try container.decodeIfPresent([PlaylistItem].self, forKey: .items) ?? []
+        addedAt = try container.decodeIfPresent(Date.self, forKey: .addedAt) ?? Date()
+        fetchedAt = try container.decodeIfPresent(Date.self, forKey: .fetchedAt) ?? addedAt
+        watchedItemIDs = try container.decodeIfPresent([String].self, forKey: .watchedItemIDs) ?? []
+        isTruncated = try container.decodeIfPresent(Bool.self, forKey: .isTruncated) ?? false
+        tags = TagNormalizer.merge(try container.decodeIfPresent([String].self, forKey: .tags) ?? [])
     }
 
     public var chapterCount: Int { items.count }
@@ -45,6 +66,10 @@ public struct PlaylistRecord: Identifiable, Codable, Hashable, Sendable {
     public var coverVideoID: String? { items.first?.videoID }
     public var shareURL: URL? {
         URL(string: "https://www.youtube.com/playlist?list=\(id)")
+    }
+
+    public func hasTag(_ tag: String) -> Bool {
+        tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame }
     }
 
     public func isWatched(_ videoID: String) -> Bool {

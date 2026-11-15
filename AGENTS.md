@@ -88,6 +88,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Playlist categories are real categories.** `PlaylistRecord.tags` uses the same
+  normaliser; a tag filter mixes `ShelfItem.video` and `ShelfItem.playlist` sorted
+  by date (or one seeded shuffle). Sidebar counts stay video-only; the header adds
+  "· N courses". The deck never contains playlists.
 - **`.playlists` is a shelf mode, not a video filter.** `ShelfFilter.playlists`
   makes `Library.videos` return nothing and swaps the pane for the playlist grid;
   never send it through the deck, pager or shuffle, and keep the sidebar row under
@@ -143,6 +147,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   output. Rewriting "Learning" to "Education" at entry made it impossible to
   create a category whose name happened to be an alias — do not merge the two
   functions again.
+- **The catalog travels with every backup path.** `ShelfBackup` carries an optional
+  `playlists` array; `BackupService.readContents` returns both; profile import
+  writes the new profile's `playlists.json`; restore copies both files aside.
+  When adding an export path, include the catalog or the feature is half-exported.
 - **Backups are a versioned envelope, restores are replace-only.** The backup
   carries `format` and `version`; a newer version is refused with a clear reason.
   Raw `library.json` is accepted only when a top-level `videos` array exists,

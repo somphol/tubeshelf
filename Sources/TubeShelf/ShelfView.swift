@@ -87,7 +87,7 @@ struct ShelfView: View {
             }
             if !model.isBrowsingPlaylists, !model.visibleVideos.isEmpty {
                 Button {
-                    if let first = model.pagedVideos.first ?? model.visibleVideos.first {
+                    if let first = model.visibleVideos.first {
                         model.openDeck(startAt: first)
                     }
                 } label: {
@@ -123,7 +123,7 @@ struct ShelfView: View {
     private var content: some View {
         if model.isBrowsingPlaylists {
             playlistGrid
-        } else if model.visibleVideos.isEmpty {
+        } else if model.visibleItems.isEmpty {
             emptyState
         } else {
             ScrollViewReader { proxy in
@@ -136,8 +136,13 @@ struct ShelfView: View {
                             .id("grid-top")
 
                         LazyVGrid(columns: columns, spacing: 18) {
-                            ForEach(model.pagedVideos) { video in
-                                VideoCard(video: video, model: model)
+                            ForEach(model.pagedItems) { item in
+                                switch item {
+                                case .video(let video):
+                                    VideoCard(video: video, model: model)
+                                case .playlist(let playlist):
+                                    PlaylistCard(record: playlist, model: model)
+                                }
                             }
                         }
                         .padding(.horizontal, 22)
@@ -565,6 +570,7 @@ struct PlaylistCard: View {
     let model: AppModel
 
     @State private var hovering = false
+    @State private var editingTags = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -598,10 +604,21 @@ struct PlaylistCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(record.channel.isEmpty ? "Playlist" : record.channel)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                Text(record.channel.isEmpty ? "Playlist" : record.channel)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                ForEach(record.tags.prefix(2), id: \.self) { tag in
+                    Text(tag)
+                        .font(.system(size: 9))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.primary.opacity(0.07), in: Capsule())
+                        .lineLimit(1)
+                }
+            }
 
             HStack(spacing: 6) {
                 Capsule()
@@ -636,8 +653,12 @@ struct PlaylistCard: View {
         .onTapGesture { model.openPlaylistCatalog(id: record.id) }
         .onHover { hovering = $0 }
         .help("\(record.title) · \(record.watchedCount) of \(record.chapterCount) watched")
+        .sheet(isPresented: $editingTags) {
+            PlaylistTagEditorSheet(model: model, record: record)
+        }
         .contextMenu {
             Button("Open course") { model.openPlaylistCatalog(id: record.id) }
+            Button("Edit categories…") { editingTags = true }
             Button("Open on YouTube") {
                 if let url = record.shareURL { NSWorkspace.shared.open(url) }
             }

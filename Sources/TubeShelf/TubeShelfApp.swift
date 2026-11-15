@@ -76,7 +76,7 @@ struct TubeShelfApp: App {
 
                 Divider()
                 Button("Present Current Category") {
-                    if let first = model.pagedVideos.first ?? model.visibleVideos.first {
+                    if let first = model.visibleVideos.first {
                         model.openDeck(startAt: first)
                     }
                 }

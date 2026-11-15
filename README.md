@@ -150,7 +150,13 @@ Two independent actions, both in the toolbar's playlist menu and the File menu:
 
 The catalog is a first-class row under **Library** — *Playlist Catalog* — and the
 main pane shows playlists as thumbnail cards with chapter counts and progress
-(**⌘⇧L** jumps there). Each entry keeps its chapter order offline, shows `3 / 16` progress, and
+(**⌘⇧L** jumps there).
+
+**Courses take categories too.** *Edit categories* on a course card or in its
+detail view uses the same picker as videos, including creating a new category.
+When a category contains both, its view mixes video cards and course cards in one
+grid, newest first, and the header says `2 videos · 1 course`. Presenting still
+walks videos only. Each entry keeps its chapter order offline, shows `3 / 16` progress, and
 opens a detail view where you can tick chapters, add a single chapter with its
 **+** button (the category editor appears first), use **Add missing to Shelf**
 (the bulk review sheet for that playlist), **Present** the chapters you already
@@ -186,6 +192,10 @@ file that contains no videos asks for confirmation first, instead of silently
 parking you on an empty shelf.
 
 ## Backup and restore
+
+Backups carry the playlist catalog alongside the library, and importing a backup
+as a profile brings its courses too. Restoring copies the outgoing library *and*
+catalog aside first.
 
 **Google Drive:** *Back up to Drive* (**⌥⇧⌘S**, or the button in Settings) writes
 straight into `My Drive/TubeShelf Backups` as long as Google Drive for Desktop is

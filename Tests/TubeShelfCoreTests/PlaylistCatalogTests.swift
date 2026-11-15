@@ -20,7 +20,8 @@ final class PlaylistCatalogTests: XCTestCase {
             channel: "3Blue1Brown",
             items: items(16),
             addedAt: addedAt,
-            watchedItemIDs: ["vid00000000", "vid00000001"]
+            watchedItemIDs: ["vid00000000", "vid00000001"],
+            tags: ["Math", "Linear Algebra"]
         )
     }
 
@@ -102,6 +103,26 @@ final class PlaylistCatalogTests: XCTestCase {
 
         let withoutCatalog = try ShelfBackup.encode(library)
         XCTAssertEqual(try ShelfBackup.decodeContents(withoutCatalog).playlists, [])
+    }
+
+    func testPlaylistTagsSurviveBackupAndOldRecordsDecode() throws {
+        let playlist = record()
+        let contents = try ShelfBackup.decodeContents(
+            try ShelfBackup.encode(Library(), playlists: [playlist])
+        )
+        XCTAssertEqual(contents.playlists.first?.tags, ["Math", "Linear Algebra"])
+        XCTAssertTrue(contents.playlists.first?.hasTag("math") == true)
+
+        // A catalog written before tags existed still decodes, with no tags.
+        let old = """
+        {"id":"PL1","title":"Old course","channel":"C","items":[],
+         "addedAt":"2026-11-14T10:00:00Z","fetchedAt":"2026-11-14T10:00:00Z",
+         "watchedItemIDs":[],"isTruncated":false}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let record = try decoder.decode(PlaylistRecord.self, from: Data(old.utf8))
+        XCTAssertTrue(record.tags.isEmpty)
     }
 
     func testOldBackupWithoutPlaylistsStillDecodes() throws {

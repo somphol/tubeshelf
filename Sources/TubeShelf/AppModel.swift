@@ -2,6 +2,26 @@ import SwiftUI
 import Observation
 import TubeShelfCore
 
+/// One cell in the shelf grid: a video, or a course in a category view.
+enum ShelfItem: Identifiable {
+    case video(Video)
+    case playlist(PlaylistRecord)
+
+    var id: String {
+        switch self {
+        case .video(let video): "v-\(video.id)"
+        case .playlist(let playlist): "p-\(playlist.id)"
+        }
+    }
+
+    var addedAt: Date {
+        switch self {
+        case .video(let video): video.addedAt
+        case .playlist(let playlist): playlist.addedAt
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -169,13 +189,22 @@ final class AppModel {
 
     /// Creates a shelf from a file without touching any other profile.
     @discardableResult
-    func addProfile(name: String, library incoming: Library, importedFrom: String?) throws -> Profile {
+    func addProfile(
+        name: String,
+        library incoming: Library,
+        playlists incomingPlaylists: [PlaylistRecord] = [],
+        importedFrom: String?
+    ) throws -> Profile {
         let unique = profileStore.uniqueName(name, among: profiles)
         let profile = try profileStore.create(
             name: unique,
             library: incoming,
             importedFrom: importedFrom
         )
+        if !incomingPlaylists.isEmpty {
+            try PlaylistStore(directory: profileStore.directory(for: profile))
+                .save(incomingPlaylists)
+        }
         profiles = (try? profileStore.profiles()) ?? (profiles + [profile])
         switchProfile(profile.id)
         return profile
@@ -247,6 +276,32 @@ final class AppModel {
         return SeededShuffle.shuffle(ordered, seed: shuffleSeed)
     }
 
+    /// A category view mixes courses with videos; every other view stays video-only.
+    var visibleItems: [ShelfItem] {
+        var items = visibleVideos.map(ShelfItem.video)
+        guard let tag = filter.tagName else { return items }
+        items.append(contentsOf: playlistsTagged(tag).map(ShelfItem.playlist))
+
+        if let shuffleSeed {
+            // Sorting after the videos were shuffled would undo the shuffle.
+            return SeededShuffle.shuffle(items, seed: shuffleSeed)
+        }
+        return items.sorted { $0.addedAt > $1.addedAt }
+    }
+
+    func playlistsTagged(_ tag: String) -> [PlaylistRecord] {
+        let needle = SearchText.normalize(query)
+        return playlists.filter { record in
+            guard record.hasTag(tag) else { return false }
+            guard !needle.isEmpty else { return true }
+            return SearchText.matches(needle: needle, haystack: "\(record.title) \(record.channel)")
+        }
+    }
+
+    func playlistCount(for tag: String) -> Int {
+        playlists.filter { $0.hasTag(tag) }.count
+    }
+
     var isShuffled: Bool { shuffleSeed != nil }
 
     var isBrowsingPlaylists: Bool { filter == .playlists }
@@ -274,11 +329,11 @@ final class AppModel {
     /// Pagination for the grid. The deck deliberately still receives every
     /// matching video, so presenting a category is never cut short by a page.
     var pageWindow: PageWindow {
-        PageWindow(total: visibleVideos.count, pageSize: pageSize, pageIndex: pageIndex)
+        PageWindow(total: visibleItems.count, pageSize: pageSize, pageIndex: pageIndex)
     }
 
-    var pagedVideos: [Video] {
-        let all = visibleVideos
+    var pagedItems: [ShelfItem] {
+        let all = visibleItems
         return Array(PageWindow(total: all.count, pageSize: pageSize, pageIndex: pageIndex).slice(all))
     }
 
@@ -361,7 +416,10 @@ final class AppModel {
         case .favorites: return "\(shown) favorite\(shown == 1 ? "" : "s")"
         case .unwatched: return "\(shown) still to watch"
         case .unsorted: return "\(shown) without a category"
-        case .tag: return "\(shown) video\(shown == 1 ? "" : "s") in this category"
+        case .tag:
+            guard let tag = filter.tagName else { return "\(shown) videos" }
+            let courses = playlistCount(for: tag)
+            return "\(shown) video\(shown == 1 ? "" : "s")" + (courses > 0 ? " · \(courses) course\(courses == 1 ? "" : "s")" : "")
         case .channel(let name): return "\(shown) video\(shown == 1 ? "" : "s") from \(name)"
         case .playlists:
             let chapters = playlists.reduce(0) { $0 + $1.chapterCount }
@@ -520,6 +578,13 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(450))
             self?.isPlaylistImportPresented = true
         }
+    }
+
+    func setPlaylistTags(_ tags: [String], id: String) {
+        guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }
+        playlists[index].tags = TagNormalizer.merge(tags)
+        savePlaylists()
+        flash("Updated categories for \(playlists[index].title)")
     }
 
     func savePlaylists() {
@@ -684,6 +749,13 @@ final class AppModel {
     /// built-in library.
     var categoryChoices: [String] {
         var names = library.tagCounts.map(\.name)
+        for record in playlists {
+            for tag in record.tags where !names.contains(where: {
+                $0.caseInsensitiveCompare(tag) == .orderedSame
+            }) {
+                names.append(tag)
+            }
+        }
         for name in TagTaxonomy.names where !names.contains(where: {
             $0.caseInsensitiveCompare(name) == .orderedSame
         }) {
@@ -732,11 +804,15 @@ final class AppModel {
 
         // Keep the outgoing library beside the store so choosing the wrong file
         // is always recoverable.
+        let stamp = Int(Date().timeIntervalSince1970)
         if let data = try? Data(contentsOf: store.fileURL) {
-            let stamp = Int(Date().timeIntervalSince1970)
             let aside = store.directory.appendingPathComponent("library-before-restore-\(stamp).json")
             try? FileManager.default.createDirectory(at: store.directory, withIntermediateDirectories: true)
             try? data.write(to: aside, options: .atomic)
+        }
+        if let playlistsData = try? Data(contentsOf: playlistStore.fileURL) {
+            let aside = store.directory.appendingPathComponent("playlists-before-restore-\(stamp).json")
+            try? playlistsData.write(to: aside, options: .atomic)
         }
 
         library = incoming

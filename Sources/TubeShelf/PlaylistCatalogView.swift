@@ -151,6 +151,7 @@ struct PlaylistDetailView: View {
 
     @State private var confirmRemove = false
     @State private var addingItem: PlaylistItem?
+    @State private var editingTags = false
 
     private var onShelfCount: Int {
         playlist.items.filter { model.library.contains(youtubeID: $0.videoID) }.count
@@ -167,6 +168,9 @@ struct PlaylistDetailView: View {
             chapters
             Divider().opacity(0.4)
             footer
+        }
+        .sheet(isPresented: $editingTags) {
+            PlaylistTagEditorSheet(model: model, record: playlist)
         }
         .sheet(item: $addingItem) { item in
             PlaylistItemEditorSheet(
@@ -223,6 +227,24 @@ struct PlaylistDetailView: View {
                     Text("\(playlist.watchedCount) of \(playlist.chapterCount) watched · \(onShelfCount) on shelf")
                         .font(.system(size: 10.5))
                         .foregroundStyle(.tertiary)
+
+                    HStack(spacing: 5) {
+                        ForEach(playlist.tags.prefix(3), id: \.self) { tag in
+                            Text(tag)
+                                .font(.system(size: 9.5, weight: .medium))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.primary.opacity(0.07), in: Capsule())
+                        }
+                        Button {
+                            editingTags = true
+                        } label: {
+                            Label(playlist.tags.isEmpty ? "Add categories" : "Edit",
+                                  systemImage: "tag")
+                                .font(.system(size: 10))
+                        }
+                        .buttonStyle(.link)
+                    }
                     Capsule()
                         .fill(Color.primary.opacity(0.08))
                         .frame(height: 4)

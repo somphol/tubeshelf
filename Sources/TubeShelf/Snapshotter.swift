@@ -93,6 +93,38 @@ enum Snapshotter {
                     model.openPlaylistCatalog(id: mode == "catalog-detail" ? record.id : nil)
                 }
 
+            case "mixed":
+                let calculus = (0..<12).map { index in
+                    PlaylistItem(
+                        videoID: String(format: "vid%08d", index + 200),
+                        title: "Chapter \(index + 1) · Essence of calculus",
+                        channel: "3Blue1Brown",
+                        durationSeconds: 700 + index * 90
+                    )
+                }
+                let record = model.catalogPlaylist(PlaylistMetadata(
+                    playlistID: "PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+                    title: "Essence of calculus",
+                    items: calculus,
+                    truncated: false
+                ))
+                model.setPlaylistTags(["Math"], id: record.id)
+                model.add(Video(
+                    youtubeID: "kuOxDh3egN0",
+                    title: "Vectors | Chapter 1, Essence of linear algebra",
+                    channel: "3Blue1Brown",
+                    tags: ["Math"],
+                    durationSeconds: 600
+                ))
+                model.add(Video(
+                    youtubeID: "aircAruvnKk",
+                    title: "But what is a neural network?",
+                    channel: "3Blue1Brown",
+                    tags: ["Math", "AI & Machine Learning"],
+                    durationSeconds: 1150
+                ))
+                model.select(.tag("Math"))
+
             case "playlist-editor":
                 let item = PlaylistItem(
                     videoID: "kuOxDh3egN0",

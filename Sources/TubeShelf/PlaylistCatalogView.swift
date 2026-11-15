@@ -150,6 +150,7 @@ struct PlaylistDetailView: View {
     let onRemoved: () -> Void
 
     @State private var confirmRemove = false
+    @State private var addingItem: PlaylistItem?
 
     private var onShelfCount: Int {
         playlist.items.filter { model.library.contains(youtubeID: $0.videoID) }.count
@@ -166,6 +167,16 @@ struct PlaylistDetailView: View {
             chapters
             Divider().opacity(0.4)
             footer
+        }
+        .sheet(item: $addingItem) { item in
+            PlaylistItemEditorSheet(
+                model: model,
+                item: item,
+                initialTags: model.suggestedTags(for: item),
+                primaryLabel: "Add to Shelf"
+            ) { tags in
+                model.addChapterToShelf(item, tags: tags)
+            }
         }
         .alert("Remove from the catalog?", isPresented: $confirmRemove) {
             Button("Cancel", role: .cancel) {}
@@ -277,6 +288,18 @@ struct PlaylistDetailView: View {
                         }
 
                         Spacer(minLength: 6)
+
+                        if !onShelf {
+                            Button {
+                                addingItem = item
+                            } label: {
+                                Image(systemName: "plus.circle")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Add this chapter to your shelf — review its categories first")
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 5)
@@ -293,11 +316,11 @@ struct PlaylistDetailView: View {
                 .foregroundStyle(.red)
             Spacer()
             if missingCount > 0 {
-                Button("Add missing (\(missingCount))") {
+                Button("Add missing to Shelf (\(missingCount))…") {
                     model.addMissingVideos(from: playlist)
                 }
                 .controlSize(.small)
-                .help("Opens the review sheet with this playlist so you can choose categories first")
+                .help("Opens the review sheet for this playlist so you can choose categories before adding")
             }
             Button("Present \(onShelfCount) chapter\(onShelfCount == 1 ? "" : "s")") {
                 model.presentPlaylist(playlist)

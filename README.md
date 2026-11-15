@@ -150,9 +150,10 @@ Two independent actions, both in the toolbar's playlist menu and the File menu:
 
 The catalog (**⌘⇧L**, or the Playlists section in the sidebar) is a shelf of
 courses. Each entry keeps its chapter order offline, shows `3 / 16` progress, and
-opens a detail view where you can tick chapters, **Add missing** (opens the review
-sheet for that playlist), **Present** the chapters you already have in order, or
-remove the course without touching any video.
+opens a detail view where you can tick chapters, add a single chapter with its
+**+** button (the category editor appears first), use **Add missing to Shelf**
+(the bulk review sheet for that playlist), **Present** the chapters you already
+have in order, or remove the course without touching any video.
 
 Progress belongs to the playlist, not the shelf: ticking a chapter marks the
 shelf's copy watched when it exists, but a course can be tracked without filing

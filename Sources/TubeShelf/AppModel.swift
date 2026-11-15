@@ -465,6 +465,35 @@ final class AppModel {
         isPlaylistCatalogPresented = false
     }
 
+    /// Adds one chapter to the shelf, with the categories reviewed in the editor.
+    @discardableResult
+    func addChapterToShelf(_ item: PlaylistItem, tags: [String]) -> Bool {
+        guard !library.contains(youtubeID: item.videoID) else {
+            flash("That chapter is already on your shelf")
+            return false
+        }
+        let video = Video(
+            youtubeID: item.videoID,
+            title: item.title,
+            channel: item.channel,
+            tags: TagNormalizer.merge(tags),
+            durationSeconds: item.durationSeconds
+        )
+        guard library.add(video) else { return false }
+        save()
+        flash("Added “\(item.title)” to your shelf")
+        return true
+    }
+
+    func suggestedTags(for item: PlaylistItem) -> [String] {
+        HeuristicTagger().suggest(
+            title: item.title,
+            channel: item.channel,
+            limit: 3,
+            knownCategories: library.tagCounts.map(\.name)
+        ).tags
+    }
+
     func addMissingVideos(from record: PlaylistRecord) {
         guard let url = record.shareURL?.absoluteString else { return }
         playlistImportPrefill = url

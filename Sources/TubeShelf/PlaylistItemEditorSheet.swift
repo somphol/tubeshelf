@@ -9,6 +9,7 @@ struct PlaylistItemEditorSheet: View {
     let model: AppModel
     let item: PlaylistItem
     let initialTags: [String]
+    var primaryLabel: String = "Use These Categories"
     let onSave: ([String]) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -41,7 +42,7 @@ struct PlaylistItemEditorSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Use These Categories") {
+                Button(primaryLabel) {
                     onSave(tags)
                     dismiss()
                 }

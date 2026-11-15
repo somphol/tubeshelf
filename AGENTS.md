@@ -88,6 +88,9 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Buttons on a catalog playlist must name their destination.** "Add missing to
+  Shelf" and the per-chapter **+** both write to the shelf (after category review);
+  nothing in the catalog detail adds to the catalog. Keep that wording explicit.
 - **The two playlist commands are independent on purpose.** Importing videos must
   not write the catalog; cataloging must not add videos. Do not "helpfully" join
   them again.

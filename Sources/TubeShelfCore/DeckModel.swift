@@ -88,6 +88,14 @@ public struct DeckModel: Equatable, Sendable {
         return true
     }
 
+    public mutating func jumpToFirst() {
+        index = 0
+    }
+
+    public mutating func jumpToLast() {
+        index = max(0, slides.count - 1)
+    }
+
     public mutating func jump(to slideID: String) {
         guard let position = slides.firstIndex(where: { $0.id == slideID }) else { return }
         index = position

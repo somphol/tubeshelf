@@ -73,6 +73,9 @@ struct RootView: View {
         .sheet(isPresented: $model.isPlaylistCatalogPresented) {
             PlaylistCatalogView(model: model)
         }
+        .sheet(isPresented: $model.isTidyPresented) {
+            TidyView(model: model)
+        }
         .sheet(isPresented: $model.isAddPlaylistToCatalogPresented) {
             AddPlaylistToCatalogSheet(model: model)
         }
@@ -89,6 +92,7 @@ struct RootView: View {
                 .padding(.bottom, 22)
         }
         .onChange(of: model.filter) { _, _ in model.refreshDeck() }
+        .onOpenURL { model.handleURL($0) }
         #if DEBUG
         .task { Snapshotter.runIfRequested(model: model) }
         #endif
@@ -252,6 +256,7 @@ struct SidebarView: View {
                             Toggle("Ascending", isOn: $model.categorySortAscending)
                             Divider()
                             Button("Manage categories…") { model.openCategoryManager() }
+                            Button("Tidy categories…") { model.isTidyPresented = true }
                         } label: {
                             Image(systemName: "ellipsis.circle")
                                 .font(.system(size: 10, weight: .semibold))

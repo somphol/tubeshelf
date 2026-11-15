@@ -131,6 +131,30 @@ enum Snapshotter {
                     model.deck?.jump(to: "p-\(record.id)")
                 }
 
+            case "tidy":
+                let seeds: [(String, String, [String])] = [
+                    ("vid00000101", "Car review: the new one", ["Cars"]),
+                    ("vid00000102", "Car build, part one", ["Car"]),
+                    ("vid00000103", "Car build, part two", ["Car"]),
+                    ("vid00000104", "Vectors, chapter one", ["Math"]),
+                    ("vid00000105", "Linear combinations", ["Math"]),
+                    ("vid00000106", "Matrices", ["Math"]),
+                    ("vid00000107", "Determinants", ["Math"]),
+                    ("vid00000108", "Eigenvectors", ["Math"]),
+                    ("vid00000109", "Sourdough basics", ["Cooking"]),
+                    ("vid00000110", "Knife skills", ["Cooking"])
+                ]
+                for (id, title, tags) in seeds {
+                    model.add(Video(
+                        youtubeID: id,
+                        title: title,
+                        channel: "Demo",
+                        tags: tags,
+                        durationSeconds: 300
+                    ))
+                }
+                model.isTidyPresented = true
+
             case "mixed":
                 let calculus = (0..<12).map { index in
                     PlaylistItem(

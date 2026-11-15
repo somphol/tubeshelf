@@ -38,6 +38,11 @@ struct TubeShelfApp: App {
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
+                Button("Tidy Categories…") {
+                    model.isTidyPresented = true
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+
                 Button("Manage Categories…") {
                     model.openCategoryManager()
                 }
@@ -189,6 +194,18 @@ struct SettingsView: View {
                 }
                 Text("Large categories are split into pages so the grid stays quick. The deck still runs through every video in the category.")
                     .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Toggle("Index in Spotlight", isOn: Binding(
+                    get: { model.spotlightEnabled },
+                    set: { model.spotlightEnabled = $0 }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11.5))
+
+                Text("Titles, channels, categories and courses appear in ⌘Space. Turning this off removes them.")
+                    .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }

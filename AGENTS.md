@@ -88,6 +88,17 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **The Tidy panel is advisory.** `CategoryAudit` only proposes merges, lonely
+  categories and catch-alls; every change goes through the normal
+  `mergeCategories` / `deleteTag` paths with a confirmation.
+- **Spotlight is part of saving.** `AppModel.scheduleSpotlight()` runs from
+  `save()`, `savePlaylists()` and profile switches; the indexer debounces 1.2 s and
+  rebuilds everything. Results use the `tubeshelf://video/<id>` and
+  `tubeshelf://playlist/<id>` scheme, so `CFBundleURLTypes` must stay in
+  `Support/Info.plist` and `RootView` must keep the `onOpenURL` handler.
+- **Deck input is tri-modal.** Buttons, arrow keys, Home/End, and a scroll-wheel
+  monitor that ignores the bottom 120 pt (filmstrip and controls). Keep that guard
+  or horizontal filmstrip scrolling will flip slides.
 - **The deck carries two slide types.** `DeckModel` holds `[DeckSlide]`
   (`.video` / `.playlist`); the video-only initialiser wraps videos for chapter
   decks. A course is a poster slide, never a player: mosaic, progress, chapter

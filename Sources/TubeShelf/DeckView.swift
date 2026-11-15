@@ -5,6 +5,9 @@ import TubeShelfCore
 struct DeckView: View {
     let model: AppModel
 
+    @State private var scrollMonitor: Any?
+    @State private var lastScroll = Date.distantPast
+
     private var deck: DeckModel? { model.deck }
     private var current: DeckSlide? { deck?.current }
 
@@ -45,6 +48,54 @@ struct DeckView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.deckBackground)
         .clipped()
+        .background {
+            // Home / End move to the ends of the deck without adding chrome.
+            HStack(spacing: 0) {
+                Button("") { model.deck?.jumpToFirst() }
+                    .keyboardShortcut(.home, modifiers: [])
+                Button("") { model.deck?.jumpToLast() }
+                    .keyboardShortcut(.end, modifiers: [])
+            }
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+        }
+        .onAppear(perform: installScrollMonitor)
+        .onDisappear(perform: removeScrollMonitor)
+    }
+
+    // MARK: - Scroll to move
+
+    private func installScrollMonitor() {
+        guard scrollMonitor == nil else { return }
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            guard event.window == NSApp.keyWindow else { return event }
+            // Leave the filmstrip and controls alone.
+            guard event.locationInWindow.y > 120 else { return event }
+
+            let vertical = event.scrollingDeltaY
+            let horizontal = event.scrollingDeltaX
+            let delta = abs(vertical) >= abs(horizontal) ? vertical : horizontal
+            guard abs(delta) > 10 else { return event }
+
+            let now = Date()
+            guard now.timeIntervalSince(lastScroll) > 0.35 else { return event }
+            lastScroll = now
+
+            if delta < 0 {
+                model.deck?.showNext()
+            } else {
+                model.deck?.showPrevious()
+            }
+            return event
+        }
+    }
+
+    private func removeScrollMonitor() {
+        if let monitor = scrollMonitor {
+            NSEvent.removeMonitor(monitor)
+            scrollMonitor = nil
+        }
     }
 
     // MARK: - Chrome

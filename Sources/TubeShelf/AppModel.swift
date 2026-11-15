@@ -52,6 +52,14 @@ final class AppModel {
     var isChannelBrowserPresented = false
     var isPlaylistImportPresented = false
     var isPlaylistCatalogPresented = false
+    var isTidyPresented = false
+
+    var spotlightEnabled: Bool = Preferences.spotlightEnabled {
+        didSet {
+            Preferences.spotlightEnabled = spotlightEnabled
+            scheduleSpotlight()
+        }
+    }
     var isAddPlaylistToCatalogPresented = false
     /// Debug snapshot hook: opens the catalog sheet with a playlist ready.
     var catalogPlaylistPrefill: String?
@@ -133,6 +141,7 @@ final class AppModel {
                 self.toast = "Could not read \(active.name): \(error.localizedDescription)"
             }
             self.playlists = (try? self.playlistStore.load()) ?? []
+            scheduleSpotlight()
             self.library.retainPins(among: Set(
                 (self.library.tagCounts.map(\.name) + self.playlists.flatMap(\.tags)).map { $0.lowercased() }
             ))
@@ -201,6 +210,7 @@ final class AppModel {
         deck = nil
         editingVideoID = nil
         isAddPresented = false
+        scheduleSpotlight()
         flash("Switched to \(profile.name)")
     }
 
@@ -698,6 +708,24 @@ final class AppModel {
         } catch {
             flash("Could not save the playlist catalog: \(error.localizedDescription)")
         }
+        scheduleSpotlight()
+    }
+
+    /// Spotlight results open a custom URL; route it to the shelf or the catalog.
+    func handleURL(_ url: URL) {
+        guard url.scheme == "tubeshelf" else { return }
+        let id = url.lastPathComponent
+        switch url.host {
+        case "video":
+            guard let video = library.video(youtubeID: id) else { return }
+            filter = .all
+            query = ""
+            openDeck(startAt: video)
+        case "playlist":
+            openPlaylistCatalog(id: id)
+        default:
+            break
+        }
     }
 
     func revealVideo(_ video: Video) {
@@ -852,6 +880,15 @@ final class AppModel {
 
     /// Categories offered in the playlist sheet: the shelf's own first, then the
     /// built-in library.
+    var categoryHealth: CategoryAudit.Report {
+        CategoryAudit.report(
+            videoCounts: library.tagCounts,
+            playlistTags: playlists.flatMap(\.tags),
+            thinVideoCount: library.videos.filter { $0.tags.count <= 1 }.count,
+            totalVideos: library.videos.count
+        )
+    }
+
     var categoryChoices: [String] {
         var names = library.tagCounts.map(\.name)
         for record in playlists {
@@ -935,6 +972,14 @@ final class AppModel {
 
     // MARK: - Persistence
 
+    func scheduleSpotlight() {
+        SpotlightIndexer.shared.schedule(
+            videos: library.videos,
+            playlists: playlists,
+            enabled: spotlightEnabled
+        )
+    }
+
     func save() {
         // A category can disappear when its last video is deleted or retagged;
         // drop the orphaned pin before it reaches disk. Courses count too.
@@ -950,6 +995,7 @@ final class AppModel {
         } catch {
             flash("Saving failed: \(error.localizedDescription)")
         }
+        scheduleSpotlight()
     }
 
     func flash(_ message: String) {
@@ -1029,6 +1075,11 @@ enum Preferences {
                 defaults.removeObject(forKey: "driveAccountPath")
             }
         }
+    }
+
+    static var spotlightEnabled: Bool {
+        get { defaults.object(forKey: "spotlightEnabled") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "spotlightEnabled") }
     }
 
     static var activeProfileID: String? {

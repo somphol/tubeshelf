@@ -187,6 +187,13 @@ restore.
 Limits: public and unlisted only (private playlists, Watch later and Liked cannot
 be read), roughly 100 chapters per fetch, and refresh is manual for now.
 
+## Spotlight
+
+Titles, channels, categories and courses are indexed for ⌘Space, and opening a
+result goes straight back into the app: videos open their slide, courses open the
+catalog. *Settings → Browsing → Index in Spotlight* turns it off and removes the
+entries.
+
 ## Profiles
 
 A profile is a whole separate shelf. Your own videos never mix with a friend's

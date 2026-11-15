@@ -96,6 +96,41 @@ enum Snapshotter {
                     model.openPlaylistCatalog(id: mode == "catalog-detail" ? record.id : nil)
                 }
 
+            case "deck-playlist":
+                let calculusItems = (0..<12).map { index in
+                    PlaylistItem(
+                        videoID: String(format: "vid%08d", index + 200),
+                        title: "Chapter \(index + 1) · Essence of calculus",
+                        channel: "3Blue1Brown",
+                        durationSeconds: 700 + index * 90
+                    )
+                }
+                let record = model.catalogPlaylist(PlaylistMetadata(
+                    playlistID: "PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+                    title: "Essence of calculus",
+                    items: calculusItems,
+                    truncated: false
+                ))
+                model.setPlaylistTags(["Math"], id: record.id)
+                for index in 0..<3 {
+                    let id = calculusItems[index].videoID
+                    if model.playlist(id: record.id)?.isWatched(id) == false {
+                        model.toggleChapter(playlistID: record.id, videoID: id)
+                    }
+                }
+                model.add(Video(
+                    youtubeID: "kuOxDh3egN0",
+                    title: "Vectors | Chapter 1, Essence of linear algebra",
+                    channel: "3Blue1Brown",
+                    tags: ["Math"],
+                    durationSeconds: 600
+                ))
+                model.select(.tag("Math"))
+                if let first = model.visibleVideos.first {
+                    model.openDeck(startAt: first)
+                    model.deck?.jump(to: "p-\(record.id)")
+                }
+
             case "mixed":
                 let calculus = (0..<12).map { index in
                     PlaylistItem(
@@ -186,7 +221,7 @@ enum Snapshotter {
                 if model.visibleVideos.count > 60 {
                     let target = model.visibleVideos[60]
                     model.openDeck(startAt: model.visibleVideos.first ?? target)
-                    model.deck?.jump(to: target.id)
+                    model.deck?.jump(to: "v-\(target.id.uuidString)")
                 } else if let first = model.visibleVideos.first {
                     model.openDeck(startAt: first)
                 }

@@ -88,6 +88,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **The deck carries two slide types.** `DeckModel` holds `[DeckSlide]`
+  (`.video` / `.playlist`); the video-only initialiser wraps videos for chapter
+  decks. A course is a poster slide, never a player: mosaic, progress, chapter
+  ticks, Open course. The filmstrip renders `thumbnailVideoID` and marks courses.
 - **Playlist categories are real categories.** `PlaylistRecord.tags` uses the same
   normaliser; a tag filter mixes `ShelfItem.video` and `ShelfItem.playlist` sorted
   by date (or one seeded shuffle). The sidebar uses `combinedTagCounts` (videos +

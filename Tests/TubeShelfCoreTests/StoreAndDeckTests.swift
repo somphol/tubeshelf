@@ -73,8 +73,8 @@ final class StoreAndDeckTests: XCTestCase {
     }
 
     func testDeckStartsAtZeroForUnknownOrEmptyInput() {
-        XCTAssertEqual(DeckModel(slides: []).position, 0)
-        XCTAssertNil(DeckModel(slides: []).current)
+        XCTAssertEqual(DeckModel(slides: [DeckSlide]()).position, 0)
+        XCTAssertNil(DeckModel(slides: [DeckSlide]()).current)
         let videos = [Video(youtubeID: "aaaaaaaaaaa", title: "A", channel: "C")]
         XCTAssertEqual(DeckModel(slides: videos, startAt: UUID()).position, 1)
     }
@@ -84,7 +84,7 @@ final class StoreAndDeckTests: XCTestCase {
         let second = Video(youtubeID: "bbbbbbbbbbb", title: "B", channel: "C")
         var deck = DeckModel(slides: [first, second], startAt: second.id)
         deck.refresh(with: [second])
-        XCTAssertEqual(deck.current?.id, second.id)
+        XCTAssertEqual(deck.current?.video?.id, second.id)
         XCTAssertEqual(deck.position, 1)
     }
 
@@ -154,5 +154,57 @@ final class StoreAndDeckTests: XCTestCase {
         XCTAssertEqual(library.count, 1)
         XCTAssertEqual(library.videos[0].channel, "")
         XCTAssertFalse(library.videos[0].isFavorite)
+    }
+}
+
+
+final class DeckSlideTests: XCTestCase {
+    private func video(_ id: String, _ title: String) -> Video {
+        Video(youtubeID: id, title: title, channel: "C")
+    }
+
+    private func course() -> PlaylistRecord {
+        PlaylistRecord(
+            id: "PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+            title: "Essence of linear algebra",
+            channel: "3Blue1Brown",
+            items: (0..<3).map {
+                PlaylistItem(videoID: String(format: "vid%08d", $0), title: "Chapter \($0)", channel: "3Blue1Brown", durationSeconds: 600)
+            }
+        )
+    }
+
+    func testADeckCanHoldVideosAndCourses() {
+        let first = video("aaaaaaaaaaa", "First")
+        let record = course()
+        var deck = DeckModel(
+            slides: [.video(first), .playlist(record)],
+            startAt: "p-\(record.id)"
+        )
+
+        XCTAssertEqual(deck.position, 2)
+        XCTAssertEqual(deck.current?.playlist?.title, "Essence of linear algebra")
+        XCTAssertNil(deck.current?.video)
+        XCTAssertEqual(deck.current?.thumbnailVideoID, "vid00000000")
+
+        XCTAssertTrue(deck.showPrevious())
+        XCTAssertEqual(deck.current?.video?.id, first.id)
+        XCTAssertFalse(deck.showPrevious())
+    }
+
+    func testRefreshKeepsTheCurrentCourseSelected() {
+        let record = course()
+        var deck = DeckModel(slides: [.playlist(record)], startAt: "p-\(record.id)")
+        deck.refresh(with: [.playlist(record), .video(video("bbbbbbbbbbb", "New"))])
+        XCTAssertEqual(deck.current?.playlist?.id, record.id)
+        XCTAssertEqual(deck.total, 2)
+    }
+
+    func testVideoOnlyDecksStillWork() {
+        let first = video("aaaaaaaaaaa", "First")
+        let second = video("bbbbbbbbbbb", "Second")
+        let deck = DeckModel(slides: [first, second], startAt: second.id)
+        XCTAssertEqual(deck.current?.video?.id, second.id)
+        XCTAssertEqual(deck.total, 2)
     }
 }

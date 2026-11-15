@@ -169,8 +169,7 @@ main pane shows playlists as thumbnail cards with chapter counts and progress
 **Courses take categories too.** *Edit categories* on a course card or in its
 detail view uses the same picker as videos, including creating a new category.
 When a category contains both, its view mixes video cards and course cards in one
-grid, newest first, and the header says `2 videos · 1 course`. Presenting still
-walks videos only.
+grid, newest first, and the header says `2 videos · 1 course`. Presenting now walks both: video slides and one poster per course.
 
 A category that exists **only on courses** appears in the sidebar like any other
 (e.g. `C++ · 2`), and its counts include both videos and courses. Pins survive as

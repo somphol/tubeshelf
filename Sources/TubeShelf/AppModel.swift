@@ -3,6 +3,15 @@ import Observation
 import TubeShelfCore
 
 /// One cell in the shelf grid: a video, or a course in a category view.
+extension ShelfItem {
+    var deckSlide: DeckSlide {
+        switch self {
+        case .video(let video): .video(video)
+        case .playlist(let playlist): .playlist(playlist)
+        }
+    }
+}
+
 enum ShelfItem: Identifiable {
     case video(Video)
     case playlist(PlaylistRecord)
@@ -298,6 +307,10 @@ final class AppModel {
     }
 
     func playlistsTagged(_ tag: String) -> [PlaylistRecord] {
+        playlistsTagged(tag, query: query)
+    }
+
+    private func playlistsTagged(_ tag: String, query: String) -> [PlaylistRecord] {
         let needle = SearchText.normalize(query)
         return playlists.filter { record in
             guard record.hasTag(tag) else { return false }
@@ -514,12 +527,12 @@ final class AppModel {
     }
 
     func openDeck(startAt video: Video) {
-        let slides = visibleVideos
+        let slides = visibleItems.map(\.deckSlide)
         guard !slides.isEmpty else { return }
         deckFilter = filter
         deckQuery = query
         deckTitle = filter.title
-        deck = DeckModel(slides: slides, startAt: video.id)
+        deck = DeckModel(slides: slides, startAt: "v-\(video.id.uuidString)")
     }
 
     func openDeckForTag(_ tag: String) {
@@ -614,7 +627,10 @@ final class AppModel {
             return
         }
         deckTitle = record.title
-        deck = DeckModel(slides: slides, startAt: first.id)
+        deck = DeckModel(
+            slides: slides.map(DeckSlide.video),
+            startAt: "v-\(first.id.uuidString)"
+        )
         isPlaylistCatalogPresented = false
     }
 
@@ -948,12 +964,21 @@ final class AppModel {
 
     func refreshDeck() {
         guard var current = deck else { return }
-        current.refresh(with: library.videos(filter: deckFilter, query: deckQuery))
+        current.refresh(with: deckSlides(filter: deckFilter, query: deckQuery))
         if current.total == 0 {
             deck = nil
         } else {
             deck = current
         }
+    }
+
+    private func deckSlides(filter: ShelfFilter, query: String) -> [DeckSlide] {
+        var items = library.videos(filter: filter, query: query, scope: searchScope).map(ShelfItem.video)
+        if let tag = filter.tagName {
+            items.append(contentsOf: playlistsTagged(tag, query: query).map(ShelfItem.playlist))
+            items.sort { $0.addedAt > $1.addedAt }
+        }
+        return items.map(\.deckSlide)
     }
 
     // MARK: - Samples

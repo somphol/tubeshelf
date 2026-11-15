@@ -6,11 +6,11 @@ struct DeckView: View {
     let model: AppModel
 
     private var deck: DeckModel? { model.deck }
-    private var current: Video? { deck?.current }
+    private var current: DeckSlide? { deck?.current }
 
     var body: some View {
         ZStack {
-            BlurredBackdrop(videoID: current?.youtubeID ?? "")
+            BlurredBackdrop(videoID: current?.thumbnailVideoID ?? "")
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -45,7 +45,6 @@ struct DeckView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.deckBackground)
         .clipped()
-
     }
 
     // MARK: - Chrome
@@ -97,7 +96,15 @@ struct DeckView: View {
 
     // MARK: - Media
 
-    private func media(for video: Video) -> some View {
+    @ViewBuilder
+    private func media(for slide: DeckSlide) -> some View {
+        switch slide {
+        case .video(let video): videoMedia(video)
+        case .playlist(let playlist): coursePoster(playlist)
+        }
+    }
+
+    private func videoMedia(_ video: Video) -> some View {
         Color.clear
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
             .overlay {
@@ -106,16 +113,7 @@ struct DeckView: View {
                         Button {
                             NSWorkspace.shared.open(video.watchURL)
                         } label: {
-                            ZStack {
-                                Circle().fill(.black.opacity(0.5))
-                                    .frame(width: 62, height: 62)
-                                Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
-                                    .frame(width: 62, height: 62)
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 22, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .offset(x: 2)
-                            }
+                            playBadge
                         }
                         .buttonStyle(.plain)
                         .help("Play on YouTube")
@@ -129,14 +127,84 @@ struct DeckView: View {
             .shadow(color: .black.opacity(0.55), radius: 30, y: 16)
     }
 
+    /// A course gets a poster, not a player: nine chapter stills in a grid, the
+    /// course title, and its progress.
+    private func coursePoster(_ playlist: PlaylistRecord) -> some View {
+        Color.clear
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .overlay {
+                ZStack(alignment: .bottomLeading) {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 3),
+                        spacing: 3
+                    ) {
+                        ForEach(Array(playlist.items.prefix(9))) { item in
+                            ThumbnailView(videoID: item.videoID, cornerRadius: 0)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
+                        }
+                    }
+                    .background(Color.white.opacity(0.04))
+
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.35), .black.opacity(0.88)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("COURSE")
+                            .font(.system(size: 9, weight: .bold))
+                            .tracking(1.6)
+                            .foregroundStyle(Theme.accent)
+                        Text(playlist.title)
+                            .font(.system(size: 24, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
+                        HStack(spacing: 8) {
+                            Text("\(playlist.chapterCount) chapters")
+                            Text("·")
+                            Text("\(playlist.watchedCount) watched")
+                        }
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.6))
+                    }
+                    .padding(20)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.55), radius: 30, y: 16)
+    }
+
+    private var playBadge: some View {
+        ZStack {
+            Circle().fill(.black.opacity(0.5)).frame(width: 62, height: 62)
+            Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1).frame(width: 62, height: 62)
+            Image(systemName: "play.fill")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(.white)
+                .offset(x: 2)
+        }
+    }
+
     // MARK: - Info
 
-    private func info(for video: Video) -> some View {
+    @ViewBuilder
+    private func info(for slide: DeckSlide) -> some View {
+        switch slide {
+        case .video(let video): videoInfo(video)
+        case .playlist(let playlist): courseInfo(playlist)
+        }
+    }
+
+    private func videoInfo(_ video: Video) -> some View {
         VStack(alignment: .leading, spacing: 13) {
-            Text("SLIDE \(deck?.position ?? 0) OF \(deck?.total ?? 0)")
-                .font(.system(size: 9.5, weight: .bold))
-                .tracking(1.4)
-                .foregroundStyle(Theme.accent)
+            slideKicker
 
             Text(video.title)
                 .font(.system(size: 27, weight: .semibold, design: .rounded))
@@ -171,32 +239,7 @@ struct DeckView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.42))
 
-            if video.tags.isEmpty {
-                Text("No category yet")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.4))
-            } else {
-                FlowWrap(items: video.tags) { tag in
-                    Button {
-                        model.select(.tag(tag))
-                        model.closeDeck()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: SymbolLibrary.category(tag))
-                                .font(.system(size: 9, weight: .semibold))
-                            Text(tag)
-                                .font(.system(size: 10.5, weight: .medium))
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.white.opacity(0.10), in: Capsule())
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.white.opacity(0.85))
-                }
-            }
+            tagRow(video.tags)
 
             if !video.note.isEmpty {
                 Text(video.note)
@@ -206,26 +249,22 @@ struct DeckView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack(spacing: 8) {
-                Button {
-                    NSWorkspace.shared.open(video.watchURL)
-                } label: {
-                    Label("Play on YouTube", systemImage: "play.fill")
-                        .font(.system(size: 11.5, weight: .semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .controlSize(.small)
+            Button {
+                NSWorkspace.shared.open(video.watchURL)
+            } label: {
+                Label("Play on YouTube", systemImage: "play.fill")
+                    .font(.system(size: 11.5, weight: .semibold))
             }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+            .controlSize(.small)
             .padding(.top, 2)
 
             HStack(spacing: 10) {
                 Button {
                     model.editingVideoID = video.id
                 } label: {
-                    Label("Edit", systemImage: "tag")
-                        .font(.system(size: 10.5))
-                        .lineLimit(1)
+                    Label("Edit", systemImage: "tag").font(.system(size: 10.5)).lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white.opacity(0.6))
@@ -257,8 +296,7 @@ struct DeckView: View {
                     NSPasteboard.general.setString(video.watchURL.absoluteString, forType: .string)
                     model.flash("Link copied")
                 } label: {
-                    Label("Copy", systemImage: "link")
-                        .font(.system(size: 10.5))
+                    Label("Copy", systemImage: "link").font(.system(size: 10.5))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white.opacity(0.6))
@@ -266,12 +304,150 @@ struct DeckView: View {
             }
             .padding(.top, 2)
 
-            Text("← → move · esc back to shelf")
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.3))
-                .padding(.top, 4)
+            hint
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func courseInfo(_ playlist: PlaylistRecord) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            slideKicker
+
+            Text(playlist.title)
+                .font(.system(size: 27, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(4)
+                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !playlist.channel.isEmpty {
+                Text(playlist.channel)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .lineLimit(1)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text("\(playlist.watchedCount) of \(playlist.chapterCount) watched")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.white.opacity(0.55))
+                    if playlist.isTruncated {
+                        Text("first batch").font(.system(size: 9.5)).foregroundStyle(.orange)
+                    }
+                }
+                Capsule()
+                    .fill(.white.opacity(0.12))
+                    .frame(height: 4)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { geo in
+                            Capsule()
+                                .fill(Theme.accentGradient)
+                                .frame(width: max(2, geo.size.width * playlist.progress))
+                        }
+                    }
+                    .frame(height: 4)
+            }
+
+            tagRow(playlist.tags)
+
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(playlist.items.prefix(6).enumerated()), id: \.element.videoID) { index, item in
+                    HStack(spacing: 6) {
+                        Text("\(index + 1)")
+                            .font(.system(size: 9.5).monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.35))
+                            .frame(width: 14, alignment: .trailing)
+                        Image(systemName: playlist.isWatched(item.videoID)
+                              ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 8))
+                            .foregroundStyle(playlist.isWatched(item.videoID)
+                                             ? Theme.accent : .white.opacity(0.3))
+                        Text(item.title)
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                }
+                if playlist.chapterCount > 6 {
+                    Text("+ \(playlist.chapterCount - 6) more chapters")
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.white.opacity(0.35))
+                        .padding(.leading, 20)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    model.openPlaylistCatalog(id: playlist.id)
+                    model.closeDeck()
+                } label: {
+                    Label("Open course", systemImage: "list.bullet.rectangle")
+                        .font(.system(size: 11.5, weight: .semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .controlSize(.small)
+
+                Button {
+                    if let url = playlist.shareURL { NSWorkspace.shared.open(url) }
+                } label: {
+                    Label("YouTube", systemImage: "arrow.up.right.square")
+                        .font(.system(size: 11.5, weight: .medium))
+                }
+                .buttonStyle(.bordered)
+                .tint(.white)
+                .controlSize(.small)
+            }
+            .padding(.top, 2)
+
+            hint
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var slideKicker: some View {
+        Text("SLIDE \(deck?.position ?? 0) OF \(deck?.total ?? 0)")
+            .font(.system(size: 9.5, weight: .bold))
+            .tracking(1.4)
+            .foregroundStyle(Theme.accent)
+    }
+
+    private var hint: some View {
+        Text("← → move · esc back to shelf")
+            .font(.system(size: 10))
+            .foregroundStyle(.white.opacity(0.3))
+            .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private func tagRow(_ tags: [String]) -> some View {
+        if tags.isEmpty {
+            Text("No category yet")
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.4))
+        } else {
+            FlowWrap(items: tags) { tag in
+                Button {
+                    model.select(.tag(tag))
+                    model.closeDeck()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: SymbolLibrary.category(tag))
+                            .font(.system(size: 9, weight: .semibold))
+                        Text(tag)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.white.opacity(0.10), in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.85))
+            }
+        }
     }
 
     // MARK: - Filmstrip
@@ -300,9 +476,7 @@ struct DeckView: View {
         .frame(height: 62)
     }
 
-    /// Only the neighbourhood of the current slide is built. A category with a
-    /// thousand videos must not create a thousand thumbnail views.
-    private var filmstripWindow: [Video] {
+    private var filmstripWindow: [DeckSlide] {
         guard let deck else { return [] }
         let radius = 20
         let lower = max(0, deck.index - radius)
@@ -317,9 +491,19 @@ struct DeckView: View {
                 Button {
                     model.deck?.jump(to: slide.id)
                 } label: {
-                    ThumbnailView(videoID: slide.youtubeID, cornerRadius: 6)
+                    ThumbnailView(videoID: slide.thumbnailVideoID ?? "", cornerRadius: 6)
                         .frame(width: 92)
                         .opacity(slide.id == current?.id ? 1 : 0.45)
+                        .overlay(alignment: .bottomTrailing) {
+                            if slide.playlist != nil {
+                                Image(systemName: "list.bullet.rectangle")
+                                    .font(.system(size: 7, weight: .bold))
+                                    .padding(3)
+                                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 3))
+                                    .foregroundStyle(.white)
+                                    .padding(2)
+                            }
+                        }
                         .overlay(
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .strokeBorder(
@@ -369,7 +553,7 @@ struct DeckView: View {
                 Spacer()
 
                 Button {
-                    NSWorkspace.shared.open(current?.watchURL ?? URL(string: "https://youtube.com")!)
+                    if let url = currentURL { NSWorkspace.shared.open(url) }
                 } label: {
                     Text("Open on YouTube")
                         .font(.system(size: 11, weight: .medium))
@@ -400,6 +584,14 @@ struct DeckView: View {
             .padding(.bottom, 16)
         }
         .padding(.top, 6)
+    }
+
+    private var currentURL: URL? {
+        switch current {
+        case .video(let video): video.watchURL
+        case .playlist(let playlist): playlist.shareURL
+        case nil: URL(string: "https://youtube.com")
+        }
     }
 }
 

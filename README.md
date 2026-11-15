@@ -70,13 +70,21 @@ shows the AI status, the library path, and a *Remove all videos* action.
 
 ## Categories
 
-Twenty-six categories ship with the app (Programming, AI & Machine Learning,
+Thirty-one categories ship with the app, including Math and its subtopics
+(Trigonometry, Calculus, Geometry, Linear Algebra, Statistics). A subtopic always
+pulls its parent along, so a trig video is filed as *Math + Trigonometry*.
+Recently (Programming, AI & Machine Learning,
 Design, Science, Math, Business, Finance, Crypto & Web3, Productivity, Health &
 Fitness, Cooking, Travel, History, News & Politics, Education, Music, Film &
 Video, Gaming, DIY & Home, Photography, Cars, Sports, Writing, Psychology,
 Language Learning, Talks & Podcasts). The list lives in one file
 (`TagTaxonomy.swift`) and feeds the sidebar icons, the AI prompt and the keyword
 fallback together, so they cannot drift apart.
+
+Your own categories are part of the classifier too: once *Trigonometry* exists,
+any video whose title mentions it gets that tag, and the on-device model is given
+your category list alongside the built-ins. Plurals are understood
+("distributions" matches "distribution").
 
 Custom categories are allowed anywhere a category is entered. A video can carry
 as many as you like; an empty list puts it in **Unsorted**.

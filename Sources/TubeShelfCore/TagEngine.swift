@@ -49,28 +49,42 @@ public struct TagEngine: Sendable {
         channel: String = "",
         description: String = "",
         channelHint: String? = nil,
+        knownCategories: [String] = [],
         limit: Int = 3
     ) async -> TagSuggestion {
         let heuristic = HeuristicTagger().suggest(
-            title: title, channel: channel, description: description, limit: limit
+            title: title,
+            channel: channel,
+            description: description,
+            limit: limit,
+            knownCategories: knownCategories
         )
-        let fallback = applyingChannelHint(to: heuristic, hint: channelHint)
+        let fallback = applyingChannelHint(to: heuristic, hint: channelHint, knownCategories: knownCategories)
 
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *), FoundationModelTagging.status.isAvailable {
             do {
                 let raw = try await FoundationModelTagging.suggest(
-                    title: title, channel: channel, description: description, limit: limit
+                    title: title,
+                    channel: channel,
+                    description: description,
+                    knownCategories: knownCategories,
+                    limit: limit
                 )
-                let known = TagNormalizer.merge(raw.compactMap { TagNormalizer.taxonomyMatch($0) })
-                    .filter { TagTaxonomy.isKnown($0) && $0 != TagTaxonomy.unsorted }
+                let known = TagNormalizer.merge(raw.compactMap { resolve($0, knownCategories: knownCategories) })
+                    .filter { name in
+                        name != TagTaxonomy.unsorted
+                            && (TagTaxonomy.isKnown(name)
+                                || knownCategories.contains { $0.caseInsensitiveCompare(name) == .orderedSame })
+                    }
 
                 if !known.isEmpty {
                     // Trust the model's judgement, including when it returns a
                     // single category. Mixing in keyword guesses made the result
                     // less relevant, which is the thing this app is judged on.
+                    let chosen = Array(known.prefix(max(1, min(limit, 3))))
                     return TagSuggestion(
-                        tags: Array(known.prefix(max(1, min(limit, 3)))),
+                        tags: TagTaxonomy.withParents(chosen, limit: max(limit, chosen.count)),
                         source: .onDeviceModel
                     )
                 }
@@ -90,13 +104,27 @@ public struct TagEngine: Sendable {
     /// When nothing in the title is decisive, fall back to what this channel is
     /// usually filed under. Only ever fills an empty answer — it never overrides
     /// a real match.
-    private func applyingChannelHint(to suggestion: TagSuggestion, hint: String?) -> TagSuggestion {
-        guard suggestion.tags.isEmpty,
-              let hint,
-              let cleaned = TagNormalizer.taxonomyMatch(hint),
-              TagTaxonomy.isKnown(cleaned)
+    private func applyingChannelHint(
+        to suggestion: TagSuggestion,
+        hint: String?,
+        knownCategories: [String]
+    ) -> TagSuggestion {
+        guard suggestion.tags.isEmpty, let hint,
+              let cleaned = TagNormalizer.canonical(hint)
         else { return suggestion }
+
+        let isKnown = TagTaxonomy.isKnown(cleaned)
+            || knownCategories.contains { $0.caseInsensitiveCompare(cleaned) == .orderedSame }
+        guard isKnown else { return suggestion }
         return TagSuggestion(tags: [cleaned], source: .heuristic, note: "Usual category for this channel")
+    }
+
+    /// The model may return an alias of a built-in category or one of the
+    /// person's own categories. Resolve both, and drop anything else.
+    private func resolve(_ raw: String, knownCategories: [String]) -> String? {
+        if let match = TagNormalizer.taxonomyMatch(raw) { return match }
+        guard let cleaned = TagNormalizer.canonical(raw) else { return nil }
+        return knownCategories.first { $0.caseInsensitiveCompare(cleaned) == .orderedSame }
     }
 }
 
@@ -133,6 +161,7 @@ enum FoundationModelTagging {
         title: String,
         channel: String,
         description: String,
+        knownCategories: [String],
         limit: Int
     ) async throws -> [String] {
         let instructions = """
@@ -148,7 +177,7 @@ enum FoundationModelTagging {
         doubt, return a single category.
 
         Allowed categories:
-        \(TagTaxonomy.promptList())
+        \(promptList(knownCategories))
         """
 
         let session = LanguageModelSession(
@@ -173,6 +202,19 @@ enum FoundationModelTagging {
         )
 
         return response.content.tags
+    }
+
+    private static func promptList(_ knownCategories: [String]) -> String {
+        var names = TagTaxonomy.names
+        for raw in knownCategories {
+            guard let cleaned = TagNormalizer.canonical(raw),
+                  cleaned.count >= 3,
+                  !names.contains(where: { $0.caseInsensitiveCompare(cleaned) == .orderedSame })
+            else { continue }
+            names.append(cleaned)
+        }
+        if names.count > 60 { names = Array(names.prefix(60)) }
+        return names.map { "- \($0)" }.joined(separator: "\n")
     }
 }
 

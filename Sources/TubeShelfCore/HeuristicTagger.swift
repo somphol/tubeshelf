@@ -38,14 +38,33 @@ public struct HeuristicTagger: Sendable {
         title: String,
         channel: String = "",
         description: String = "",
-        limit: Int = 4
+        limit: Int = 4,
+        knownCategories: [String] = []
     ) -> TagSuggestion {
         let headline = TextMatcher.normalize(title)
         let byline = TextMatcher.normalize(channel)
         let body = TextMatcher.normalize(description)
 
+        // The person's own categories count as topics too: once "Trigonometry"
+        // exists on the shelf, a trig video should suggest it by name even though
+        // the built-in taxonomy knows nothing about it.
+        var candidates: [(name: String, keywords: [String], weakKeywords: [String])] =
+            TagTaxonomy.all.map { ($0.name, $0.keywords, $0.weakKeywords) }
+
+        let taxonomyKeys = Set(TagTaxonomy.names.map { $0.lowercased() })
+        for raw in knownCategories {
+            guard let cleaned = TagNormalizer.canonical(raw),
+                  cleaned.count >= 3,
+                  !taxonomyKeys.contains(cleaned.lowercased())
+            else { continue }
+            if candidates.contains(where: { $0.name.caseInsensitiveCompare(cleaned) == .orderedSame }) {
+                continue
+            }
+            candidates.append((cleaned, [cleaned], []))
+        }
+
         var scored: [(name: String, score: Int)] = []
-        for category in TagTaxonomy.all {
+        for category in candidates {
             var strongTitle = 0
             var strongChannel = 0
             var strongBody = 0
@@ -96,7 +115,10 @@ public struct HeuristicTagger: Sendable {
             .prefix(max(1, min(limit, 3)))
             .map(\.name)
 
-        return TagSuggestion(tags: Array(ordered), source: .heuristic)
+        return TagSuggestion(
+            tags: TagTaxonomy.withParents(Array(ordered), limit: max(limit, ordered.count)),
+            source: .heuristic
+        )
     }
 }
 
@@ -114,13 +136,43 @@ enum TextMatcher {
     }
 
     static func contains(_ keyword: String, in normalizedText: String) -> Bool {
-        let needle = normalize(keyword)
-        guard needle.count > 2 else { return false }
+        let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
         // Non-Latin scripts (Thai, CJK) do not use spaces between words, so a
         // boundary match would never fire. Fall back to a plain substring test.
-        if needle.unicodeScalars.contains(where: { $0.value > 0x024F }) {
-            return normalizedText.contains(needle.trimmingCharacters(in: .whitespaces))
+        if trimmed.unicodeScalars.contains(where: { $0.value > 0x024F }) {
+            return normalize(normalizedText).contains(normalize(trimmed).trimmingCharacters(in: .whitespaces))
         }
-        return normalizedText.contains(needle)
+
+        let needle = tokens(trimmed).map(stem)
+        let haystack = tokens(normalizedText).map(stem)
+        guard !needle.isEmpty, needle.count <= haystack.count else { return false }
+
+        for start in 0...(haystack.count - needle.count) {
+            if Array(haystack[start..<start + needle.count]) == needle { return true }
+        }
+        return false
+    }
+
+    static func tokens(_ text: String) -> [String] {
+        normalize(text).split(separator: " ").map(String.init)
+    }
+
+    /// Very light singularisation so "distributions" matches "distribution" and
+    /// "probabilities" matches "probability". Short words are left alone, which
+    /// keeps "news" from becoming "new".
+    static func stem(_ word: String) -> String {
+        guard word.count >= 5 else { return word }
+        if word.hasSuffix("ies"), word.count > 5 {
+            return String(word.dropLast(3)) + "y"
+        }
+        if word.hasSuffix("ss") {
+            return word
+        }
+        if word.hasSuffix("s") {
+            return String(word.dropLast())
+        }
+        return word
     }
 }

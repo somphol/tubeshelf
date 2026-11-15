@@ -88,6 +88,16 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Categories can have parents.** `VideoCategory.parent` makes Trigonometry imply
+  Math, and `TagTaxonomy.withParents` is applied to both model and keyword
+  answers. Add a parent whenever a subtopic is introduced.
+- **The person's categories are classifier input.** `HeuristicTagger` accepts
+  `knownCategories` and matches their names; `TagEngine` passes the same list into
+  the model prompt and accepts those names from the model. Do not filter
+  suggestions down to the built-in taxonomy again.
+- **Matching is stemmed and token-based.** "distributions" matches "distribution",
+  "probabilities" matches "probability"; words under five characters are never
+  stemmed so "news" cannot match "new". Tests pin both directions.
 - **Aliases never rewrite storage.** `TagNormalizer.canonical` only cleans and
   capitalises; `taxonomyMatch` is the alias-aware lookup used solely for model
   output. Rewriting "Learning" to "Education" at entry made it impossible to

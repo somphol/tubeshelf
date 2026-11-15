@@ -77,6 +77,46 @@ final class TaggingTests: XCTestCase {
         XCTAssertEqual(suggestion.tags.first, "Education")
     }
 
+    func testMathSubtopicsAreSuggestedAlongsideMath() {
+        let suggestion = HeuristicTagger().suggest(
+            title: "Trigonometry - Easy to understand 3D animation",
+            channel: "Physics Videos by Eugene Khutoryansky"
+        )
+        XCTAssertTrue(suggestion.tags.contains("Math"), "got \(suggestion.tags)")
+        XCTAssertTrue(suggestion.tags.contains("Trigonometry"), "got \(suggestion.tags)")
+
+        let calculus = HeuristicTagger().suggest(title: "The essence of calculus: derivatives and integrals")
+        XCTAssertTrue(calculus.tags.contains("Calculus"), "got \(calculus.tags)")
+    }
+
+    func testPluralsMatchSingularKeywords() {
+        let suggestion = HeuristicTagger().suggest(
+            title: "Binomial distributions | Probabilities of probabilities, part 1"
+        )
+        XCTAssertTrue(suggestion.tags.contains("Statistics"), "got \(suggestion.tags)")
+        XCTAssertTrue(suggestion.tags.contains("Math"), "parent category should ride along")
+    }
+
+    func testStemmingDoesNotInventNewsFromNew() {
+        let suggestion = HeuristicTagger().suggest(title: "A brand new beginning")
+        XCTAssertFalse(suggestion.tags.contains("News & Politics"), "got \(suggestion.tags)")
+    }
+
+    func testUserCategoriesAreMatchedByName() {
+        let suggestion = HeuristicTagger().suggest(
+            title: "How I structure a Deep Work session",
+            knownCategories: ["Deep Work", "Math"]
+        )
+        XCTAssertTrue(suggestion.tags.contains("Deep Work"), "got \(suggestion.tags)")
+
+        // A category that is not mentioned must not appear.
+        let other = HeuristicTagger().suggest(
+            title: "Sourdough bread for beginners",
+            knownCategories: ["Deep Work"]
+        )
+        XCTAssertFalse(other.tags.contains("Deep Work"))
+    }
+
     func testWeakWordsCannotCarryACategoryAlone() {
         let tagger = HeuristicTagger()
         // "model" is a weak AI word; a fashion video must not become AI.

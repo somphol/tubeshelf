@@ -480,7 +480,8 @@ final class AppModel {
             title: metadata.title,
             channel: metadata.channel,
             description: metadata.description,
-            channelHint: library.channelAffinity(for: metadata.channel)
+            channelHint: library.channelAffinity(for: metadata.channel),
+            knownCategories: library.tagCounts.map(\.name)
         )
     }
 

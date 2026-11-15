@@ -249,7 +249,8 @@ struct TubeShelfCheck {
             let suggestion = await TagEngine().suggest(
                 title: metadata.title,
                 channel: metadata.channel,
-                description: metadata.description
+                description: metadata.description,
+                knownCategories: knownCategories()
             )
             print("Tags    \(suggestion.tags.joined(separator: ", "))  [\(suggestion.source.label)]")
             return true
@@ -257,6 +258,20 @@ struct TubeShelfCheck {
             print("Fetch failed: \(error.localizedDescription)")
             return false
         }
+    }
+
+    /// Categories from every profile on this Mac, so suggestions behave like the
+    /// app rather than a cold start.
+    static func knownCategories() -> [String] {
+        let store = ProfileStore()
+        guard let profiles = try? store.profiles() else { return [] }
+        var names = Set<String>()
+        for profile in profiles {
+            if let library = try? store.libraryStore(for: profile).load() {
+                library.tagCounts.forEach { names.insert($0.name) }
+            }
+        }
+        return names.sorted()
     }
 
     // MARK: - Library maintenance

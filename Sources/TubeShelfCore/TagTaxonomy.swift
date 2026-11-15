@@ -10,6 +10,9 @@ public struct VideoCategory: Sendable, Hashable, Identifiable {
     /// Words that appear across unrelated topics ("model", "market", "band").
     /// They can tip an already-plausible category but never carry one alone.
     public let weakKeywords: [String]
+    /// A broader category this one belongs to. Suggesting "Trigonometry" also
+    /// suggests "Math", which is how people actually file things.
+    public let parent: String?
 
     public var id: String { name }
 
@@ -17,12 +20,14 @@ public struct VideoCategory: Sendable, Hashable, Identifiable {
         name: String,
         symbol: String,
         keywords: [String],
-        weakKeywords: [String] = []
+        weakKeywords: [String] = [],
+        parent: String? = nil
     ) {
         self.name = name
         self.symbol = symbol
         self.keywords = keywords
         self.weakKeywords = weakKeywords
+        self.parent = parent
     }
 }
 
@@ -63,6 +68,27 @@ public enum TagTaxonomy {
             "proof", "theorem", "equation", "statistics", "probability", "integral", "derivative",
             "linear algebra", "matrix", "topology", "number theory", "fraction", "graph theory"
         ]),
+        VideoCategory(name: "Trigonometry", symbol: "triangle", keywords: [
+            "trigonometry", "trigonometric", "trig", "unit circle", "sine", "cosine",
+            "tangent", "radians", "law of sines", "law of cosines", "sohcahtoa",
+            "sin", "cos", "tan"
+        ], weakKeywords: ["angle", "triangle"], parent: "Math"),
+        VideoCategory(name: "Calculus", symbol: "function", keywords: [
+            "calculus", "derivative", "integral", "differentiation", "integration",
+            "limits", "chain rule", "antiderivative", "taylor series", "differential equation"
+        ], parent: "Math"),
+        VideoCategory(name: "Geometry", symbol: "triangle.circle", keywords: [
+            "geometry", "pythagorean", "polygon", "congruence", "similarity",
+            "coordinate geometry", "circle theorem", "euclidean"
+        ], parent: "Math"),
+        VideoCategory(name: "Linear Algebra", symbol: "square.grid.3x3", keywords: [
+            "linear algebra", "matrix", "matrices", "determinant", "eigenvalue",
+            "eigenvector", "vector space", "basis", "span", "rank", "null space"
+        ], parent: "Math"),
+        VideoCategory(name: "Statistics", symbol: "chart.xyaxis.line", keywords: [
+            "statistics", "probability", "standard deviation", "variance", "regression",
+            "hypothesis testing", "confidence interval", "bayes", "distribution"
+        ], parent: "Math"),
         VideoCategory(name: "Business", symbol: "chart.bar.xaxis", keywords: [
             "business", "startup", "founder", "entrepreneur", "marketing", "sales", "revenue",
             "growth", "saas", "pricing", "customer", "b2b", "b2c", "product market fit",
@@ -254,6 +280,23 @@ public enum TagTaxonomy {
 
     public static func symbol(for tag: String) -> String {
         byName[tag.lowercased()]?.symbol ?? "tag"
+    }
+
+    public static func parent(of tag: String) -> String? {
+        all.first { $0.name.caseInsensitiveCompare(tag) == .orderedSame }?.parent
+    }
+
+    /// Adds the broader category for anything that has one, preserving order and
+    /// never duplicating.
+    public static func withParents(_ tags: [String], limit: Int = 4) -> [String] {
+        var result = tags
+        for tag in tags {
+            if let parent = parent(of: tag),
+               !result.contains(where: { $0.caseInsensitiveCompare(parent) == .orderedSame }) {
+                result.append(parent)
+            }
+        }
+        return Array(result.prefix(max(limit, tags.count)))
     }
 
     public static func isKnown(_ tag: String) -> Bool {

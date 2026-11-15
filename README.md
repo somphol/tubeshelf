@@ -168,7 +168,11 @@ main pane shows playlists as thumbnail cards with chapter counts and progress
 detail view uses the same picker as videos, including creating a new category.
 When a category contains both, its view mixes video cards and course cards in one
 grid, newest first, and the header says `2 videos · 1 course`. Presenting still
-walks videos only. Each entry keeps its chapter order offline, shows `3 / 16` progress, and
+walks videos only.
+
+A category that exists **only on courses** appears in the sidebar like any other
+(e.g. `C++ · 2`), and its counts include both videos and courses. Pins survive as
+long as either kind still carries the category. Each entry keeps its chapter order offline, shows `3 / 16` progress, and
 opens a detail view where you can tick chapters, add a single chapter with its
 **+** button (the category editor appears first), use **Add missing to Shelf**
 (the bulk review sheet for that playlist), **Present** the chapters you already

@@ -107,14 +107,29 @@ final class CategoryManagementTests: XCTestCase {
         XCTAssertEqual(old.pinnedTags, [])
     }
 
-    func testPinsForVanishedCategoriesArePruned() throws {
+    func testPinsArePrunedExplicitlyNotOnDecode() throws {
+        // Decoding must not prune: the app adds playlist categories after loading,
+        // so a course-only pin has to survive until the app can judge it.
         let json = """
         {"videos":[],"pinnedTags":["Cooking","Travel"]}
         """
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let library = try decoder.decode(Library.self, from: Data(json.utf8))
+        var library = try decoder.decode(Library.self, from: Data(json.utf8))
+        XCTAssertEqual(library.pinnedTags, ["Cooking", "Travel"])
+
+        library.prunePinnedTags()
         XCTAssertEqual(library.pinnedTags, [])
+    }
+
+    func testPinsCanBeRetainedAgainstAnExternalCategoryList() {
+        var library = Library()
+        library.add(makeVideo(id: "aaaaaaaaaaa", tags: ["Cooking"]))
+        library.pin("Cooking")
+        library.pin("C++")
+
+        library.retainPins(among: ["cooking", "c++"])
+        XCTAssertEqual(library.pinnedTags, ["Cooking", "C++"])
     }
 
     func testTitleOnlySearchIgnoresCategoriesAndNotes() {

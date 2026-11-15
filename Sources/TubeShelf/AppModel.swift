@@ -124,6 +124,9 @@ final class AppModel {
                 self.toast = "Could not read \(active.name): \(error.localizedDescription)"
             }
             self.playlists = (try? self.playlistStore.load()) ?? []
+            self.library.retainPins(among: Set(
+                (self.library.tagCounts.map(\.name) + self.playlists.flatMap(\.tags)).map { $0.lowercased() }
+            ))
         } else {
             self.toast = "Could not open your profiles: using an empty shelf"
         }
@@ -380,14 +383,55 @@ final class AppModel {
         goToPage(pageWindow.pageIndex - 1)
     }
 
+    /// Categories as the sidebar sees them: videos and courses together.
+    var combinedTagCounts: [TagCount] {
+        var counts: [String: Int] = [:]
+        var spelling: [String: String] = [:]
+        func add(_ name: String, _ count: Int) {
+            let key = name.lowercased()
+            counts[key, default: 0] += count
+            if spelling[key] == nil { spelling[key] = name }
+        }
+        for tag in library.tagCounts { add(tag.name, tag.count) }
+        for record in playlists {
+            for tag in record.tags { add(tag, 1) }
+        }
+        let merged = counts.map { TagCount(name: spelling[$0.key] ?? $0.key, count: $0.value) }
+        return Self.sort(merged, by: categorySort, ascending: categorySortAscending)
+    }
+
+    private static func sort(_ counts: [TagCount], by sort: CategorySort, ascending: Bool) -> [TagCount] {
+        counts.sorted { lhs, rhs in
+            switch sort {
+            case .mostVideos:
+                if lhs.count != rhs.count {
+                    return ascending ? lhs.count < rhs.count : lhs.count > rhs.count
+                }
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            case .name:
+                let isAscending = lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                return ascending ? isAscending : !isAscending
+            }
+        }
+    }
+
     var pinnedTagCounts: [TagCount] {
-        matchingSidebarQuery(library.pinnedTagCounts)
+        let counts = combinedTagCounts
+        let pinned = library.pinnedTags.compactMap { pin in
+            counts.first { $0.name.caseInsensitiveCompare(pin) == .orderedSame }
+        }
+        return matchingSidebarQuery(pinned)
     }
 
     var unpinnedTagCounts: [TagCount] {
-        matchingSidebarQuery(
-            library.unpinnedTagCounts(sortedBy: categorySort, ascending: categorySortAscending)
-        )
+        let pinnedKeys = Set(library.pinnedTags.map { $0.lowercased() })
+        let rest = combinedTagCounts.filter { !pinnedKeys.contains($0.name.lowercased()) }
+        return matchingSidebarQuery(rest)
+    }
+
+    /// Pins are valid if any video *or course* still carries the category.
+    private func prunePins() {
+        library.retainPins(among: Set(combinedTagCounts.map { $0.name.lowercased() }))
     }
 
     var hasPinnedCategories: Bool { !pinnedTagCounts.isEmpty }
@@ -877,8 +921,8 @@ final class AppModel {
 
     func save() {
         // A category can disappear when its last video is deleted or retagged;
-        // drop the orphaned pin before it reaches disk.
-        library.prunePinnedTags()
+        // drop the orphaned pin before it reaches disk. Courses count too.
+        prunePins()
         // If deletions emptied the last page, fall back to a page that exists.
         pageIndex = PageWindow(
             total: visibleVideos.count,

@@ -90,8 +90,13 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   `model.store` / `model.save()`.
 - **Playlist categories are real categories.** `PlaylistRecord.tags` uses the same
   normaliser; a tag filter mixes `ShelfItem.video` and `ShelfItem.playlist` sorted
-  by date (or one seeded shuffle). Sidebar counts stay video-only; the header adds
-  "· N courses". The deck never contains playlists.
+  by date (or one seeded shuffle). The sidebar uses `combinedTagCounts` (videos +
+  courses), so a course-only category is visible; the header reports both counts.
+  The deck never contains playlists.
+- **Pin pruning needs both kinds.** `Library` no longer prunes on decode or in its
+  own init (it cannot see playlists); `AppModel.prunePins()` runs after loading and
+  on every save against the combined category names. Do not move pruning back into
+  `Library` — a course-only pin would be deleted on launch.
 - **`.playlists` is a shelf mode, not a video filter.** `ShelfFilter.playlists`
   makes `Library.videos` return nothing and swaps the pane for the playlist grid;
   never send it through the deck, pager or shuffle, and keep the sidebar row under

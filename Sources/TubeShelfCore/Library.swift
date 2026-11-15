@@ -78,7 +78,6 @@ public struct Library: Codable, Equatable, Sendable {
     public init(videos: [Video] = [], pinnedTags: [String] = []) {
         self.videos = videos
         self.pinnedTags = TagNormalizer.merge(pinnedTags)
-        prunePinnedTags()
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -93,7 +92,6 @@ public struct Library: Codable, Equatable, Sendable {
         self.pinnedTags = TagNormalizer.merge(
             try container.decodeIfPresent([String].self, forKey: .pinnedTags) ?? []
         )
-        prunePinnedTags()
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -239,8 +237,13 @@ public struct Library: Codable, Equatable, Sendable {
 
     /// Drops pins whose category no longer exists on any video.
     public mutating func prunePinnedTags() {
-        let existing = Set(tagCounts.map { $0.name.lowercased() })
-        pinnedTags.removeAll { !existing.contains($0.lowercased()) }
+        retainPins(among: Set(tagCounts.map { $0.name.lowercased() }))
+    }
+
+    /// Same, against a caller-supplied set of category names (the app adds the
+    /// playlist catalog's tags, which this type does not know about).
+    public mutating func retainPins(among validNames: Set<String>) {
+        pinnedTags.removeAll { !validNames.contains($0.lowercased()) }
     }
 
     public var tagCounts: [TagCount] {

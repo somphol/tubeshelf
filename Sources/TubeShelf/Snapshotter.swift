@@ -128,6 +128,10 @@ enum Snapshotter {
                 ))
                 model.select(.tag("Math"))
 
+            case "cpp":
+                model.sidebarQuery = "C++"
+                model.select(.tag("C++"))
+
             case "catalog-add":
                 model.catalogPlaylistPrefill = SnapshotConfig.playlistPrefill
                 model.isAddPlaylistToCatalogPresented = true

@@ -152,7 +152,9 @@ unwatched, which is the honest default.
 Two independent actions, both in the toolbar's playlist menu and the File menu:
 
 - **Add Videos from Playlist…** (**⇧⌘N**) — review every video, edit its categories,
-  add the ones you tick to the shelf. It never touches the catalog.
+  add the ones you tick to the shelf. The list header has a tri-state checkbox plus
+  **Select all / Deselect all**, and shows `15 of 15 selected`. It never touches the
+  catalog.
 - **Add Playlist to Catalog…** (**⇧⌘⌥N**) — keep a public or unlisted playlist as a
   *course*: title, channel and ordered chapters. Adds no videos. The clipboard is
   read automatically when it holds a playlist link, categories are suggested from

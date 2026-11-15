@@ -38,6 +38,22 @@ struct PlaylistImportSheet: View {
         metadata?.items.filter { !onShelf.contains($0.videoID) } ?? []
     }
 
+    private var selectableIDs: Set<String> {
+        Set(newItems.map(\.videoID))
+    }
+
+    private var allSelected: Bool {
+        !selectableIDs.isEmpty && selection == selectableIDs
+    }
+
+    private var someSelected: Bool {
+        !selection.isEmpty && !allSelected
+    }
+
+    private func toggleAll() {
+        selection = allSelected ? [] : selectableIDs
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -184,6 +200,18 @@ struct PlaylistImportSheet: View {
     private var selectionBar: some View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
+                Button {
+                    toggleAll()
+                } label: {
+                    Image(systemName: allSelected
+                          ? "checkmark.square.fill"
+                          : (someSelected ? "minus.square.fill" : "square"))
+                        .font(.system(size: 13))
+                        .foregroundStyle(allSelected || someSelected ? Theme.accent : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(allSelected ? "Deselect all" : "Select all")
+
                 Text(metadata?.title ?? "Playlist")
                     .font(.system(size: 11.5, weight: .semibold))
                     .lineLimit(1)
@@ -192,13 +220,20 @@ struct PlaylistImportSheet: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.orange)
                 }
+
+                Text("\(selection.count) of \(selectableIDs.count) selected")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+
                 Spacer()
-                Button("Select new") { selection = Set(newItems.map(\.videoID)) }
+                Button("Select all") { selection = selectableIDs }
                     .buttonStyle(.link)
                     .font(.system(size: 11))
-                Button("Clear") { selection.removeAll() }
+                    .disabled(allSelected || selectableIDs.isEmpty)
+                Button("Deselect all") { selection.removeAll() }
                     .buttonStyle(.link)
                     .font(.system(size: 11))
+                    .disabled(selection.isEmpty)
             }
 
             HStack(spacing: 6) {

@@ -19,7 +19,9 @@ struct TubeShelfCheck {
             return
         }
 
-        let store = LibraryStore()
+        // Profiles moved the real shelf into Profiles/<uuid>/. The CLI must act on
+        // the same shelf the app is using, not the pre-profile file at the root.
+        let store = activeStore()
 
         do {
             if arguments.contains("--seed-demo") {
@@ -106,6 +108,28 @@ struct TubeShelfCheck {
           --unpin <category>     remove a pin
           --merge <from> <into>  collapse two categories
         """)
+    }
+
+    /// The profile the app is currently using, falling back to the largest one.
+    static func activeStore() -> LibraryStore {
+        let profileStore = ProfileStore()
+        guard let profiles = try? profileStore.profiles(), !profiles.isEmpty else {
+            return LibraryStore()
+        }
+
+        let saved = UserDefaults(suiteName: "studio.somphol.tubeshelf")?
+            .string(forKey: "activeProfileID")
+            .flatMap(UUID.init(uuidString:))
+        if let match = profiles.first(where: { $0.id == saved }) {
+            return profileStore.libraryStore(for: match)
+        }
+
+        let largest = profiles.max { lhs, rhs in
+            let left = (try? profileStore.libraryStore(for: lhs).load().count) ?? 0
+            let right = (try? profileStore.libraryStore(for: rhs).load().count) ?? 0
+            return left < right
+        }
+        return largest.map { profileStore.libraryStore(for: $0) } ?? LibraryStore()
     }
 
     // MARK: - Offline checks

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import TubeShelfCore
 
 /// Review a playlist before anything is filed. Categories are filled from the
@@ -16,6 +17,7 @@ struct PlaylistImportSheet: View {
     @State private var bulkTags: [String] = []
     @State private var isAdding = false
     @State private var editingItem: PlaylistItem?
+    @State private var didAutofill = false
     @State private var errorMessage = ""
 
     private enum Phase: Equatable {
@@ -49,8 +51,18 @@ struct PlaylistImportSheet: View {
         .frame(width: 780, height: 660)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
+            guard !didAutofill else { return }
+            didAutofill = true
+
             if urlText.isEmpty, let prefill = model.playlistImportPrefill {
                 urlText = prefill
+                Task { await fetch() }
+                return
+            }
+            if urlText.isEmpty,
+               let clip = NSPasteboard.general.string(forType: .string),
+               YouTubeURL.playlistID(from: clip) != nil {
+                urlText = clip.trimmingCharacters(in: .whitespacesAndNewlines)
                 Task { await fetch() }
             }
         }

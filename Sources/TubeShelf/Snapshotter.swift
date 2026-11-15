@@ -128,6 +128,10 @@ enum Snapshotter {
                 ))
                 model.select(.tag("Math"))
 
+            case "catalog-add":
+                model.catalogPlaylistPrefill = SnapshotConfig.playlistPrefill
+                model.isAddPlaylistToCatalogPresented = true
+
             case "playlist-editor":
                 let item = PlaylistItem(
                     videoID: "kuOxDh3egN0",

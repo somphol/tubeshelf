@@ -102,6 +102,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **The two playlist commands are independent on purpose.** Importing videos must
   not write the catalog; cataloging must not add videos. Do not "helpfully" join
   them again.
+- **Catalog import is reviewed, not guessed.** The add-to-catalog sheet suggests
+  categories from the title plus the first eight chapter titles, keeps existing
+  tags when re-keeping, and detects an existing playlist before saving. Clipboard
+  autofill is shared with the video-playlist sheet.
 - **`PlaylistRecord` stores a chapter snapshot and its own ticks.**
   `watchedItemIDs` is per playlist; ticking also sets the shelf's watch state when
   the video exists. `replaceItems` drops ticks for chapters that disappeared.
@@ -121,6 +125,9 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **Large imports are sequential.** Each item gets a category suggestion; with the
   on-device model enabled, 100 items can take a while. The sheet stays disabled
   while it runs. Do not parallelise model calls without rate thinking.
+- **No embedded playback.** YouTube's player returns 152/153 inside WKWebView
+  (tested with a referer wrapper and in a visible window). Keep playback external;
+  do not reintroduce an iframe without a working, tested embed path.
 - **The catalog has its own shuffle seed.** `playlistShuffleSeed` is independent of
   the video `shuffleSeed`; `shuffleCurrent()`/`clearCurrentShuffle()` dispatch on
   the visible mode. Do not merge them â€” switching panes would silently reorder the

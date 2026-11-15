@@ -44,6 +44,8 @@ final class AppModel {
     var isPlaylistImportPresented = false
     var isPlaylistCatalogPresented = false
     var isAddPlaylistToCatalogPresented = false
+    /// Debug snapshot hook: opens the catalog sheet with a playlist ready.
+    var catalogPlaylistPrefill: String?
     var pendingPlaylistID: String?
     var deckTitle: String?
     /// Used by the debug snapshot mode to open the sheet with a playlist ready.
@@ -505,13 +507,16 @@ final class AppModel {
 
     /// Saves a fetched playlist as a course. Re-adding updates the chapter list
     /// while keeping ticks for chapters that still exist.
+    /// `tags` nil keeps the current categories (used when refreshing); the import
+    /// sheet always passes a reviewed list.
     @discardableResult
-    func catalogPlaylist(_ metadata: PlaylistMetadata) -> PlaylistRecord {
+    func catalogPlaylist(_ metadata: PlaylistMetadata, tags: [String]? = nil) -> PlaylistRecord {
         if var existing = playlist(id: metadata.playlistID) {
             existing.title = metadata.title
             existing.channel = metadata.channel
             existing.replaceItems(metadata.items)
             existing.isTruncated = metadata.truncated
+            if let tags { existing.tags = TagNormalizer.merge(tags) }
             if let index = playlists.firstIndex(where: { $0.id == existing.id }) {
                 playlists[index] = existing
             }
@@ -525,7 +530,8 @@ final class AppModel {
             title: metadata.title,
             channel: metadata.channel,
             items: metadata.items,
-            isTruncated: metadata.truncated
+            isTruncated: metadata.truncated,
+            tags: tags ?? []
         )
         playlists.insert(record, at: 0)
         savePlaylists()
@@ -605,6 +611,18 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(450))
             self?.isPlaylistImportPresented = true
         }
+    }
+
+    /// A course is judged by its title first, then by the chapters it contains.
+    func suggestPlaylistTags(_ metadata: PlaylistMetadata) async -> TagSuggestion {
+        let chapterContext = metadata.items.prefix(8).map(\.title).joined(separator: ". ")
+        return await engine.suggest(
+            title: metadata.title,
+            channel: metadata.channel,
+            description: chapterContext,
+            channelHint: library.channelAffinity(for: metadata.channel),
+            knownCategories: categoryChoices
+        )
     }
 
     func setPlaylistTags(_ tags: [String], id: String) {

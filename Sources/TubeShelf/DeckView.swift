@@ -5,8 +5,6 @@ import TubeShelfCore
 struct DeckView: View {
     let model: AppModel
 
-    @State private var showPlayer = false
-
     private var deck: DeckModel? { model.deck }
     private var current: Video? { deck?.current }
 
@@ -47,9 +45,7 @@ struct DeckView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.deckBackground)
         .clipped()
-        .onChange(of: current?.id) { _, _ in
-            showPlayer = false
-        }
+
     }
 
     // MARK: - Chrome
@@ -105,32 +101,22 @@ struct DeckView: View {
         Color.clear
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
             .overlay {
-                if showPlayer {
-                    InlinePlayer(videoID: video.youtubeID) {
-                        model.flash("This video cannot play inline — open it on YouTube")
-                        showPlayer = false
+                Button {
+                    NSWorkspace.shared.open(video.watchURL)
+                } label: {
+                    ZStack {
+                        Circle().fill(.black.opacity(0.5))
+                            .frame(width: 62, height: 62)
+                        Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
+                            .frame(width: 62, height: 62)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(.white)
+                            .offset(x: 2)
                     }
-                } else {
-                    ThumbnailView(videoID: video.youtubeID, cornerRadius: 16)
-                        .overlay {
-                            Button {
-                                showPlayer = true
-                            } label: {
-                                ZStack {
-                                    Circle().fill(.black.opacity(0.5))
-                                        .frame(width: 62, height: 62)
-                                    Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
-                                        .frame(width: 62, height: 62)
-                                    Image(systemName: "play.fill")
-                                        .font(.system(size: 22, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .offset(x: 2)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .help("Play here")
-                        }
                 }
+                .buttonStyle(.plain)
+                .help("Play on YouTube")
             }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
@@ -216,24 +202,13 @@ struct DeckView: View {
 
             HStack(spacing: 8) {
                 Button {
-                    showPlayer.toggle()
+                    NSWorkspace.shared.open(video.watchURL)
                 } label: {
-                    Label(showPlayer ? "Hide player" : "Play here",
-                          systemImage: showPlayer ? "rectangle.slash" : "play.fill")
+                    Label("Play on YouTube", systemImage: "play.fill")
                         .font(.system(size: 11.5, weight: .semibold))
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
-                .controlSize(.small)
-
-                Button {
-                    NSWorkspace.shared.open(video.watchURL)
-                } label: {
-                    Label("Open on YouTube", systemImage: "arrow.up.right.square")
-                        .font(.system(size: 11.5, weight: .medium))
-                }
-                .buttonStyle(.bordered)
-                .tint(.white)
                 .controlSize(.small)
             }
             .padding(.top, 2)

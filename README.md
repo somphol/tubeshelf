@@ -58,8 +58,8 @@ Verify the whole thing (tests, headless checks, bundle, signature):
    *Settings → Browsing* sets the page size (24, 48, 96 or 144; default 48).
    The deck still runs through every video in the category, not just the page.
 7. **Present** (header button or **⌘↩**) opens the category as a slide deck.
-   **← / →** move, **Esc** returns to the shelf, the filmstrip jumps, the
-   thumbnail plays inline, and *Open on YouTube* always works.
+   **← / →** move, **Esc** returns to the shelf, the filmstrip jumps, and
+   the play button opens the video on YouTube (see the note on embeds below).
 8. Hovering a category in the sidebar reveals a ▶ that presents it directly;
    right-click to pin, present, rename, **merge into another category**, or delete
    it. The ⋯ menu next to *Categories* sorts the sidebar and opens the manager.
@@ -121,6 +121,13 @@ channel, at least two in the same category, and at least 60% share. When a video
 title says nothing useful, that category is used as the suggestion — never over a
 real match.
 
+## Playback
+
+In-app playback is deliberately not offered: YouTube's embedded player refuses to
+initialise inside the app's web view (error 152/153, reproducible both with and
+without a referer wrapper). The play button opens the video in your browser, where
+it always works.
+
 ## Adding a video you already saved
 
 Paste a duplicate link and the sheet says so, but stays editable: the existing
@@ -147,7 +154,11 @@ Two independent actions, both in the toolbar's playlist menu and the File menu:
 - **Add Videos from Playlist…** (**⇧⌘N**) — review every video, edit its categories,
   add the ones you tick to the shelf. It never touches the catalog.
 - **Add Playlist to Catalog…** (**⇧⌘⌥N**) — keep a public or unlisted playlist as a
-  *course*: title, channel and ordered chapters. Adds no videos.
+  *course*: title, channel and ordered chapters. Adds no videos. The clipboard is
+  read automatically when it holds a playlist link, categories are suggested from
+  the course title and its first chapters and are editable before saving, and a
+  course that is already in the catalog is detected up front — with an *Open*
+  shortcut and a note on whether updating adds chapters.
 
 The catalog is a first-class row under **Library** — *Playlist Catalog* — and the
 main pane shows playlists as thumbnail cards with chapter counts and progress

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import TubeShelfCore
 
 /// The catalog of playlists — courses kept as ordered chapters, independent of
@@ -373,15 +374,28 @@ struct AddPlaylistToCatalogSheet: View {
     @State private var urlText = ""
     @State private var phase: Phase = .idle
     @State private var metadata: PlaylistMetadata?
+    @State private var tags: [String] = []
+    @State private var suggestion: TagSuggestion?
+    @State private var isSuggesting = false
     @State private var errorMessage = ""
+    @State private var didAutofill = false
 
     private enum Phase: Equatable { case idle, loading, ready, failed }
 
     private let service = PlaylistService()
 
-    private var alreadySaved: Bool {
-        guard let metadata else { return false }
-        return model.playlist(id: metadata.playlistID) != nil
+    private var existingRecord: PlaylistRecord? {
+        guard let id = YouTubeURL.playlistID(from: urlText) else { return nil }
+        return model.playlist(id: id)
+    }
+
+    private var alreadySaved: Bool { existingRecord != nil }
+
+    /// Only meaningful once the fresh metadata has arrived.
+    private var chapterDelta: Int? {
+        guard let metadata, let existingRecord else { return nil }
+        let delta = metadata.items.count - existingRecord.chapterCount
+        return delta == 0 ? nil : delta
     }
 
     var body: some View {
@@ -415,6 +429,37 @@ struct AddPlaylistToCatalogSheet: View {
                         .disabled(YouTubeURL.playlistID(from: urlText) == nil || phase == .loading)
                 }
 
+                if let existingRecord, existingRecord.id == YouTubeURL.playlistID(from: urlText) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Theme.accent)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Already in the catalog")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text("\(existingRecord.chapterCount) chapters\(existingRecord.tags.isEmpty ? "" : " · " + existingRecord.tags.joined(separator: ", "))")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        Button("Open") {
+                            let id = existingRecord.id
+                            dismiss()
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(400))
+                                model.openPlaylistCatalog(id: id)
+                            }
+                        }
+                        .buttonStyle(.link)
+                        .font(.system(size: 11))
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Theme.accent.opacity(0.08))
+                    )
+                }
+
                 switch phase {
                 case .idle:
                     Text("Public or unlisted playlists only.")
@@ -430,7 +475,7 @@ struct AddPlaylistToCatalogSheet: View {
                         .foregroundStyle(.orange)
                 case .ready:
                     if let metadata {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text(metadata.title)
                                 .font(.system(size: 13, weight: .semibold))
                             Text(metadata.channel.isEmpty ? "Playlist" : metadata.channel)
@@ -439,16 +484,71 @@ struct AddPlaylistToCatalogSheet: View {
                             Text("\(metadata.items.count) chapters\(metadata.truncated ? " · first batch only" : "")")
                                 .font(.system(size: 10.5))
                                 .foregroundStyle(.tertiary)
-                            ForEach(Array(metadata.items.prefix(3).enumerated()), id: \.element.videoID) { index, item in
+                            ForEach(Array(metadata.items.prefix(2).enumerated()), id: \.element.videoID) { index, item in
                                 Text("\(index + 1). \(item.title)")
                                     .font(.system(size: 10.5))
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
                             if alreadySaved {
-                                Text("Already in the catalog — keeping it again updates the chapters.")
+                                Text(chapterDelta.map { $0 > 0
+                                     ? "Keeping it again adds \($0) new chapter\($0 == 1 ? "" : "s") and refreshes titles."
+                                     : "Keeping it again refreshes titles and keeps your watched ticks."
+                                } ?? "Keeping it again refreshes the chapter list and keeps your watched ticks.")
                                     .font(.system(size: 10.5))
                                     .foregroundStyle(.orange)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Divider().opacity(0.3)
+
+                            HStack(spacing: 6) {
+                                Text("Categories")
+                                    .font(.system(size: 10.5, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .textCase(.uppercase)
+                                if isSuggesting {
+                                    ProgressView().controlSize(.mini)
+                                } else if let suggestion {
+                                    Label(suggestion.source.label, systemImage: "sparkles")
+                                        .font(.system(size: 9.5))
+                                        .foregroundStyle(Theme.violet)
+                                }
+                                Spacer()
+                            }
+
+                            if tags.isEmpty {
+                                Text("None yet — a suggestion will appear below.")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(.tertiary)
+                            } else {
+                                FlowWrap(items: tags) { tag in
+                                    TagChip(name: tag, isRemovable: true) {
+                                        tags.removeAll { $0 == tag }
+                                    }
+                                }
+                            }
+
+                            CategoryPickerField(model: model, applied: tags) { tag in
+                                tags = TagNormalizer.merge(tags + [tag])
+                            }
+
+                            if let suggestion {
+                                let extra = suggestion.tags.filter { tag in
+                                    !tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame }
+                                }
+                                if !extra.isEmpty {
+                                    HStack(spacing: 5) {
+                                        Text("Suggested")
+                                            .font(.system(size: 9.5))
+                                            .foregroundStyle(.tertiary)
+                                        ForEach(extra, id: \.self) { tag in
+                                            TagChip(name: tag, isSuggested: true) {
+                                                tags = TagNormalizer.merge(tags + [tag])
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -466,7 +566,7 @@ struct AddPlaylistToCatalogSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button(alreadySaved ? "Update Chapters" : "Keep in Catalog") {
                     if let metadata {
-                        model.catalogPlaylist(metadata)
+                        model.catalogPlaylist(metadata, tags: tags)
                         dismiss()
                     }
                 }
@@ -477,8 +577,24 @@ struct AddPlaylistToCatalogSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .frame(width: 520, height: 420)
+        .frame(width: 540, height: 620)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            guard !didAutofill else { return }
+            didAutofill = true
+
+            if urlText.isEmpty, let prefill = model.catalogPlaylistPrefill {
+                urlText = prefill
+                Task { await fetch() }
+                return
+            }
+            if urlText.isEmpty,
+               let clip = NSPasteboard.general.string(forType: .string),
+               YouTubeURL.playlistID(from: clip) != nil {
+                urlText = clip.trimmingCharacters(in: .whitespacesAndNewlines)
+                Task { await fetch() }
+            }
+        }
     }
 
     private func fetch() async {
@@ -488,9 +604,23 @@ struct AddPlaylistToCatalogSheet: View {
             return
         }
         phase = .loading
+        suggestion = nil
         do {
-            metadata = try await service.fetch(playlistID: id)
+            let fetched = try await service.fetch(playlistID: id)
+            metadata = fetched
             phase = .ready
+
+            // Keep existing categories when re-keeping a course; otherwise ask the
+            // classifier, which reads the title and the first chapters.
+            if let existing = model.playlist(id: fetched.playlistID) {
+                tags = existing.tags
+            } else {
+                isSuggesting = true
+                let suggested = await model.suggestPlaylistTags(fetched)
+                suggestion = suggested
+                if tags.isEmpty { tags = suggested.tags }
+                isSuggesting = false
+            }
         } catch {
             phase = .failed
             errorMessage = error.localizedDescription

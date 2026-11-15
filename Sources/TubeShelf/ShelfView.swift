@@ -17,7 +17,6 @@ struct ShelfView: View {
             header
             Divider().opacity(0.4)
             content
-            if model.isSelecting { selectionBar }
             if !model.isBrowsingPlaylists, model.showsPager { pager }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -30,86 +29,6 @@ struct ShelfView: View {
                     .opacity(0)
                     .frame(width: 0, height: 0)
             }
-        }
-    }
-
-    private var selectionBar: some View {
-        VStack(spacing: 0) {
-            Divider().opacity(0.4)
-            HStack(spacing: 10) {
-                Label("\(model.selectedCount) selected", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(model.selectedCount == 0 ? Color.secondary : Theme.accent)
-
-                Menu("Add to…") {
-                    ForEach(model.categoryChoices, id: \.self) { name in
-                        Button(name) { model.bulkAddTag(name) }
-                    }
-                    Divider()
-                    Button("New Category…") { showBulkCategory = true }
-                }
-                .menuStyle(.borderlessButton)
-                .controlSize(.small)
-                .disabled(model.selectedCount == 0)
-
-                Menu("Remove from…") {
-                    ForEach(model.categoriesInSelection, id: \.self) { name in
-                        Button(name) { model.bulkRemoveTag(name) }
-                    }
-                }
-                .menuStyle(.borderlessButton)
-                .controlSize(.small)
-                .disabled(model.categoriesInSelection.isEmpty)
-
-                Button {
-                    model.bulkSetFavorite(true)
-                } label: {
-                    Label("Favorite", systemImage: "star")
-                        .font(.system(size: 10.5))
-                }
-                .buttonStyle(.plain)
-                .disabled(model.selectedCount == 0)
-
-                Button {
-                    model.bulkToggleWatched()
-                } label: {
-                    Label("Watched", systemImage: "checkmark.circle")
-                        .font(.system(size: 10.5))
-                }
-                .buttonStyle(.plain)
-                .disabled(model.selectedCount == 0)
-
-                Button(role: .destructive) {
-                    confirmBulkRemove = true
-                } label: {
-                    Label("Remove", systemImage: "trash")
-                        .font(.system(size: 10.5))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red)
-                .disabled(model.selectedCount == 0)
-
-                Spacer()
-
-                Button("Select page") { model.selectPage() }
-                    .buttonStyle(.link)
-                    .font(.system(size: 10.5))
-                Button("Done") { model.exitSelection() }
-                    .buttonStyle(.link)
-                    .font(.system(size: 10.5))
-            }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 8)
-            .background(.bar)
-        }
-        .sheet(isPresented: $showBulkCategory) {
-            BulkCategorySheet(model: model)
-        }
-        .alert("Remove \(model.selectedCount) video\(model.selectedCount == 1 ? "" : "s")?", isPresented: $confirmBulkRemove) {
-            Button("Cancel", role: .cancel) {}
-            Button("Remove", role: .destructive) { model.bulkRemoveSelected() }
-        } message: {
-            Text("They leave the shelf. This cannot be undone.")
         }
     }
 
@@ -161,6 +80,10 @@ struct ShelfView: View {
             }
 
             Spacer(minLength: 12)
+
+            if model.isSelecting {
+                selectionControls
+            } else {
             ShelfSearchField(model: model)
             Menu {
                 Button("Shuffle again") { model.shuffleCurrent() }
@@ -195,10 +118,73 @@ struct ShelfView: View {
                 .keyboardShortcut(.return, modifiers: [.command])
                 .help("Walk through this category as slides")
             }
+            }
         }
         .padding(.horizontal, 22)
         .padding(.top, 14)
         .padding(.bottom, 12)
+    }
+
+    private var selectionControls: some View {
+        HStack(spacing: 10) {
+            Text("\(model.selectedCount) selected")
+                .font(.system(size: 11, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(model.selectedCount == 0 ? Color.secondary : Theme.accent)
+
+            Menu {
+                Menu("Add to…") {
+                    ForEach(model.categoryChoices, id: \.self) { name in
+                        Button(name) { model.bulkAddTag(name) }
+                    }
+                    Divider()
+                    Button("New Category…") { showBulkCategory = true }
+                }
+                Menu("Remove from…") {
+                    if model.categoriesInSelection.isEmpty {
+                        Text("No categories in the selection")
+                    }
+                    ForEach(model.categoriesInSelection, id: \.self) { name in
+                        Button(name) { model.bulkRemoveTag(name) }
+                    }
+                }
+                Divider()
+                Button("Favorite") { model.bulkSetFavorite(true) }
+                Button("Mark watched") { model.bulkToggleWatched() }
+                Divider()
+                Button("Remove from shelf…", role: .destructive) { confirmBulkRemove = true }
+            } label: {
+                Label(
+                    model.selectedCount == 0 ? "Bulk Update" : "Bulk Update (\(model.selectedCount))",
+                    systemImage: "square.and.pencil"
+                )
+                .font(.system(size: 11.5, weight: .semibold))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Theme.accent, in: Capsule())
+            .foregroundStyle(.white)
+            .fixedSize()
+            .disabled(model.selectedCount == 0)
+
+            Button("Select page") { model.selectPage() }
+                .buttonStyle(.link)
+                .font(.system(size: 10.5))
+            Button("Done") { model.exitSelection() }
+                .buttonStyle(.link)
+                .font(.system(size: 10.5))
+        }
+        .sheet(isPresented: $showBulkCategory) {
+            BulkCategorySheet(model: model)
+        }
+        .alert("Remove \(model.selectedCount) video\(model.selectedCount == 1 ? "" : "s")?", isPresented: $confirmBulkRemove) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive) { model.bulkRemoveSelected() }
+        } message: {
+            Text("They leave the shelf. This cannot be undone.")
+        }
     }
 
     private var filterSymbolName: String {

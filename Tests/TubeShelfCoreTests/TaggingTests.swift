@@ -187,6 +187,28 @@ final class TaggingTests: XCTestCase {
         )
     }
 
+    func testGuestTitlesAndCredentialsAreDropped() {
+        let extractor = GuestNameExtractor()
+        XCTAssertEqual(
+            extractor.guest(title: "Dr. Marc Andreessen: The real AI boom"),
+            "Marc Andreessen"
+        )
+        XCTAssertEqual(
+            extractor.guest(title: "Prof. Dr. Sarah Drasner: CSS that scales"),
+            "Sarah Drasner"
+        )
+        XCTAssertEqual(
+            extractor.guest(title: "Interview with Sir David Attenborough"),
+            "David Attenborough"
+        )
+        XCTAssertEqual(
+            extractor.guest(title: "Marc Andreessen, PhD: The real AI boom"),
+            "Marc Andreessen"
+        )
+        // A one-word stage name keeps its title rather than becoming "Dre".
+        XCTAssertEqual(extractor.guest(title: "Dr. Dre: The recipe"), "Dr. Dre")
+    }
+
     func testGuestNameRejectsHostsShowsAndTopics() {
         let extractor = GuestNameExtractor()
         // The host is the channel, not a guest.

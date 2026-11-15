@@ -10,11 +10,47 @@ public struct GuestNameExtractor: Sendable {
     public func guest(title: String, channel: String = "", description: String = "") -> String? {
         let channelKey = normalize(channel)
         for candidate in titleCandidates(title) + descriptionCandidates(description) {
-            guard let name = validated(candidate) else { continue }
-            guard !overlapsChannel(name, channelKey: channelKey) else { continue }
-            return name
+            // Prefer the name without "Dr." / "Mr." / "PhD". A one-word stage
+            // name such as "Dr. Dre" keeps its title because stripping would
+            // leave a single word.
+            for variant in [strippedTitles(candidate), candidate] {
+                guard let name = validated(variant) else { continue }
+                guard !overlapsChannel(name, channelKey: channelKey) else { continue }
+                return name
+            }
         }
         return nil
+    }
+
+    private static let honorifics: Set<String> = [
+        "dr", "mr", "mrs", "ms", "mx", "prof", "professor",
+        "sir", "dame", "lord", "lady", "rev", "reverend",
+        "hon", "honorable", "judge", "justice", "capt", "captain",
+        "col", "colonel", "gen", "general", "sen", "senator",
+        "rep", "representative", "gov", "governor", "mayor"
+    ]
+
+    private static let credentials: Set<String> = [
+        "phd", "md", "mba", "jd", "esq", "cpa", "rn", "dds", "dvm",
+        "mph", "jr", "sr", "ii", "iii", "iv"
+    ]
+
+    /// Remove leading honorifics and trailing credentials, repeatedly.
+    private func strippedTitles(_ raw: String) -> String {
+        var words = raw
+            .split(whereSeparator: { $0 == " " || $0 == "\u{00A0}" })
+            .map(String.init)
+        while let first = words.first, Self.honorifics.contains(Self.core(first)) {
+            words.removeFirst()
+        }
+        while let last = words.last, Self.credentials.contains(Self.core(last)) {
+            words.removeLast()
+        }
+        return words.joined(separator: " ")
+    }
+
+    private static func core(_ word: String) -> String {
+        word.trimmingCharacters(in: .punctuationCharacters).lowercased()
     }
 
     // MARK: - Candidate windows

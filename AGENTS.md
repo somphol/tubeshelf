@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 148 unit tests
+swift test                                   # 149 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -254,7 +254,9 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   feat. / featuring", "Guest:", "in conversation with / joined by", and an opening
   "Name is a…" bio. It appends at most one name *after* the categories, rejects
   show names, topics, acronyms and host names that overlap the channel, and never
-  replaces or reorders a category. Do not make it aggressive: a wrong person tag is
+  replaces or reorders a category. Leading honorifics (Dr., Mr., Prof.) and trailing
+  credentials (PhD, Jr.) are stripped before validation; a one-word stage name such
+  as Dr. Dre keeps its title because stripping would leave a single word. Do not make it aggressive: a wrong person tag is
   worse than a missing one.
 - **Format tags are evidence-only.** `FormatTagger` adds `Talks & Podcasts` for an
   explicit "podcast" mention, a numbered episode (`#2501`) plus a guest, or two

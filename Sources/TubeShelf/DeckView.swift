@@ -259,6 +259,16 @@ struct DeckView: View {
                 .foregroundStyle(video.isFavorite ? .yellow : .white.opacity(0.6))
 
                 Button {
+                    model.toggleWatched(video)
+                } label: {
+                    Label(video.watchStatus == .done ? "Watched" : "Mark watched",
+                          systemImage: video.watchStatus == .done ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(video.watchStatus == .done ? .green : .white.opacity(0.6))
+
+                Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(video.watchURL.absoluteString, forType: .string)
                     model.flash("Link copied")

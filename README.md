@@ -127,6 +127,18 @@ Paste a duplicate link and the sheet says so, but stays editable: the existing
 categories and note arrive prefilled, **Update video** saves changes in place, and
 **Show it on the shelf** jumps to it. Nothing is duplicated.
 
+## Shuffle and watch state
+
+**Shuffle** (the shuffle button, or **⌘R**) reorders the current category
+randomly — and every click gives a fresh order, which is the point: it resurfaces
+videos you filed and forgot. The order stays put while you scroll, the deck follows
+the same order, and *Newest* returns to chronological.
+
+**Watch state** tracks `Unwatched → Watching → Watched`. The sidebar has an
+**Unwatched** filter, the deck marks a video watched in one click, and finished
+videos get a small badge on the card. Videos saved before this feature count as
+unwatched, which is the honest default.
+
 ## Profiles
 
 A profile is a whole separate shelf. Your own videos never mix with a friend's

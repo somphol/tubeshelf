@@ -1,5 +1,19 @@
 import Foundation
 
+public enum WatchStatus: String, Codable, CaseIterable, Sendable {
+    case unwatched
+    case watching
+    case done
+
+    public var label: String {
+        switch self {
+        case .unwatched: "Unwatched"
+        case .watching: "Watching"
+        case .done: "Watched"
+        }
+    }
+}
+
 /// One saved YouTube video. The YouTube ID is the durable identity; `id` exists
 /// only so SwiftUI and the deck can address a row without depending on it.
 public struct Video: Identifiable, Codable, Hashable, Sendable {
@@ -12,6 +26,7 @@ public struct Video: Identifiable, Codable, Hashable, Sendable {
     public var addedAt: Date
     public var durationSeconds: Int?
     public var isFavorite: Bool
+    public var watchStatus: WatchStatus
 
     public init(
         id: UUID = UUID(),
@@ -22,7 +37,8 @@ public struct Video: Identifiable, Codable, Hashable, Sendable {
         note: String = "",
         addedAt: Date = Date(),
         durationSeconds: Int? = nil,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        watchStatus: WatchStatus = .unwatched
     ) {
         self.id = id
         self.youtubeID = youtubeID
@@ -33,6 +49,7 @@ public struct Video: Identifiable, Codable, Hashable, Sendable {
         self.addedAt = Video.normalized(addedAt)
         self.durationSeconds = durationSeconds
         self.isFavorite = isFavorite
+        self.watchStatus = watchStatus
     }
 
     // Tolerant decoding so a library written by an older build still opens.
@@ -48,6 +65,7 @@ public struct Video: Identifiable, Codable, Hashable, Sendable {
         addedAt = Video.normalized(addedAt)
         durationSeconds = try container.decodeIfPresent(Int.self, forKey: .durationSeconds)
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        watchStatus = try container.decodeIfPresent(WatchStatus.self, forKey: .watchStatus) ?? .unwatched
     }
 
     /// Whole seconds only: keeps JSON round-trips equal and dates tidy in the UI.

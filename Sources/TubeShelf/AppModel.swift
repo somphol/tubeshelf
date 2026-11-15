@@ -22,6 +22,8 @@ final class AppModel {
     var isCategoryManagerPresented = false
     var isChannelBrowserPresented = false
     var pageIndex = 0
+    /// When set, the grid and the deck use this shuffle instead of newest-first.
+    var shuffleSeed: UInt64?
     var pageSize: Int = Preferences.pageSize {
         didSet {
             Preferences.pageSize = pageSize
@@ -226,7 +228,22 @@ final class AppModel {
     // MARK: - Derived
 
     var visibleVideos: [Video] {
-        library.videos(filter: filter, query: query, scope: searchScope)
+        let ordered = library.videos(filter: filter, query: query, scope: searchScope)
+        guard let shuffleSeed else { return ordered }
+        return SeededShuffle.shuffle(ordered, seed: shuffleSeed)
+    }
+
+    var isShuffled: Bool { shuffleSeed != nil }
+
+    /// A new random order every click; keeping the mode on between clicks.
+    func shuffle() {
+        shuffleSeed = UInt64.random(in: 1...UInt64.max)
+        pageIndex = 0
+    }
+
+    func clearShuffle() {
+        shuffleSeed = nil
+        pageIndex = 0
     }
 
     /// Pagination for the grid. The deck deliberately still receives every
@@ -317,6 +334,7 @@ final class AppModel {
         switch filter {
         case .all: return "\(library.count) saved video\(library.count == 1 ? "" : "s")"
         case .favorites: return "\(shown) favorite\(shown == 1 ? "" : "s")"
+        case .unwatched: return "\(shown) still to watch"
         case .unsorted: return "\(shown) without a category"
         case .tag: return "\(shown) video\(shown == 1 ? "" : "s") in this category"
         case .channel(let name): return "\(shown) video\(shown == 1 ? "" : "s") from \(name)"
@@ -391,6 +409,20 @@ final class AppModel {
         save()
         refreshDeck()
         flash("Removed from shelf")
+    }
+
+    func toggleWatched(_ video: Video) {
+        let next: WatchStatus = video.watchStatus == .done ? .unwatched : .done
+        library.setWatchStatus(next, for: video.id)
+        save()
+        refreshDeck()
+        flash(next == .done ? "Marked as watched" : "Marked as unwatched")
+    }
+
+    func setWatchStatus(_ status: WatchStatus, for video: Video) {
+        library.setWatchStatus(status, for: video.id)
+        save()
+        refreshDeck()
     }
 
     func toggleFavorite(_ video: Video) {

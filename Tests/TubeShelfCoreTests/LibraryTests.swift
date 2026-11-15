@@ -70,6 +70,28 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(library.video(youtubeID: "aaaaaaaaaaa")?.tags, ["Cooking"])
     }
 
+    func testWatchStatusFiltersAndCounts() {
+        var library = Library()
+        library.add(makeVideo(id: "aaaaaaaaaaa", title: "A"))
+        library.add(makeVideo(id: "bbbbbbbbbbb", title: "B"))
+        let first = library.videos[0].id
+        library.setWatchStatus(.done, for: first)
+
+        XCTAssertEqual(library.unwatchedCount, 1)
+        XCTAssertEqual(library.videos(filter: .unwatched).map(\.title), ["B"])
+        XCTAssertEqual(library.videos(filter: .all).count, 2)
+    }
+
+    func testOldVideosDecodeAsUnwatched() throws {
+        let json = """
+        {"videos":[{"youtubeID":"dQw4w9WgXcQ","title":"Old"}]}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let library = try decoder.decode(Library.self, from: Data(json.utf8))
+        XCTAssertEqual(library.videos[0].watchStatus, .unwatched)
+    }
+
     func testCategoryThatMatchesAnAliasIsStoredAsTyped() {
         var library = Library()
         library.add(makeVideo(id: "aaaaaaaaaaa", tags: []))

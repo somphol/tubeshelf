@@ -3,6 +3,7 @@ import Foundation
 public enum ShelfFilter: Hashable, Sendable, Codable {
     case all
     case favorites
+    case unwatched
     case unsorted
     case tag(String)
     case channel(String)
@@ -11,6 +12,7 @@ public enum ShelfFilter: Hashable, Sendable, Codable {
         switch self {
         case .all: "All videos"
         case .favorites: "Favorites"
+        case .unwatched: "Unwatched"
         case .unsorted: "Unsorted"
         case .tag(let name): name
         case .channel(let name): name
@@ -133,6 +135,11 @@ public struct Library: Codable, Equatable, Sendable {
 
     public mutating func remove(youtubeID: String) {
         videos.removeAll { $0.youtubeID == youtubeID }
+    }
+
+    public mutating func setWatchStatus(_ status: WatchStatus, for id: UUID) {
+        guard let index = videos.firstIndex(where: { $0.id == id }) else { return }
+        videos[index].watchStatus = status
     }
 
     public mutating func toggleFavorite(id: UUID) {
@@ -340,6 +347,7 @@ public struct Library: Codable, Equatable, Sendable {
     }
 
     public var favoritesCount: Int { videos.filter(\.isFavorite).count }
+    public var unwatchedCount: Int { videos.filter { $0.watchStatus != .done }.count }
     public var unsortedCount: Int { videos.filter(\.tags.isEmpty).count }
 
     /// Category filter first, then text search. Newest saved first.
@@ -354,6 +362,8 @@ public struct Library: Codable, Equatable, Sendable {
                 return true
             case .favorites:
                 return video.isFavorite
+            case .unwatched:
+                return video.watchStatus != .done
             case .unsorted:
                 return video.tags.isEmpty
             case .tag(let name):

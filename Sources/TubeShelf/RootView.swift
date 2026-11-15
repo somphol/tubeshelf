@@ -145,6 +145,7 @@ struct SidebarView: View {
                 Section("Library") {
                     row(.all, symbol: "rectangle.stack", title: "All videos", count: model.library.count)
                     row(.favorites, symbol: "star", title: "Favorites", count: model.library.favoritesCount)
+                    row(.unwatched, symbol: "eye.slash", title: "Unwatched", count: model.library.unwatchedCount)
                     row(.unsorted, symbol: "tray", title: "Unsorted", count: model.library.unsortedCount)
                 }
 

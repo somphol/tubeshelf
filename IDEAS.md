@@ -6,6 +6,26 @@ it was parked.
 
 ---
 
+## Playlist import
+
+**Status:** parser written and unit tested; **no UI shipped**; live validation
+blocked. Parked 2026-11-14.
+
+- `PlaylistService` + `PlaylistParser` read the first batch of a playlist from
+  `ytInitialData` (no API key), dedupe by video ID, and parse durations.
+- `YouTubeURL.playlistID(from:)` handles playlist, watch and share links.
+- **Blocker:** the playlist used for testing
+  (`PLsut0F29QsHjQmcTxUIjlfrPxa2ZbVetP`) is not public — YouTube answers "The
+  playlist does not exist." Private playlists, Watch Later and Liked videos are
+  invisible to a scraper; only public/unlisted ones can work.
+- Next steps: find a genuinely public playlist to validate the parser, then build
+  the review sheet (checkbox per item, "on shelf" status, batch add with
+  suggestions). Until then the feature must not be exposed in the UI.
+- Search results no longer embed `playlistRenderer`, so do not rely on that to
+  discover test playlists.
+
+---
+
 ## Watch history → "what haven't I filed yet?"
 
 **Status:** idea, not scheduled. Parked 2026-11-14.

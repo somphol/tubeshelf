@@ -88,6 +88,13 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Shuffle is seeded, never `shuffled()` in a view.** `SeededShuffle` with a
+  stored seed keeps the order stable across renders and pages; clicking stores a
+  new seed. The deck must keep receiving `visibleVideos` so its order matches the
+  grid. Do not sort by a random value at render time.
+- **`WatchStatus` defaults to `.unwatched` on decode.** `Unwatched` means "not
+  done", so `watching` stays in the queue. Badges appear only for non-default
+  states; the sidebar count is the queue size.
 - **Time is stored as an instant, never as a zoned wall clock.** `Video.addedAt`
   is a UTC instant truncated to whole seconds; `addedTimestamp()` renders it in
   the current zone for display. Do not add a per-video timezone field — backups

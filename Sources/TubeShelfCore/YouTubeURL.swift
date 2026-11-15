@@ -67,6 +67,26 @@ public enum YouTubeURL {
         return nil
     }
 
+    /// Playlist ids arrive as `list=` on watch, playlist and share links.
+    public static func playlistID(from raw: String) -> String? {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let markers: [Character] = ["\"", "'"]
+        while let first = text.first, markers.contains(first) { text.removeFirst() }
+        while let last = text.last, markers.contains(last) { text.removeLast() }
+
+        let withScheme = text.contains("://") ? text : "https://" + text
+        guard let components = URLComponents(string: withScheme),
+              let value = components.queryItems?.first(where: { $0.name == "list" })?.value
+        else { return nil }
+
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+        guard value.count >= 10,
+              value.unicodeScalars.allSatisfy(allowed.contains)
+        else { return nil }
+        return value
+    }
+
     public static func watchURL(for videoID: String) -> URL {
         URL(string: "https://www.youtube.com/watch?v=\(videoID)")!
     }

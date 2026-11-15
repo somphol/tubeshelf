@@ -66,3 +66,37 @@ final class PageWindowTests: XCTestCase {
         XCTAssertEqual(PageWindow(total: 5, pageSize: 0, pageIndex: 0).pageSize, 1)
     }
 }
+
+
+final class SeededShuffleTests: XCTestCase {
+    func testSameSeedSameOrder() {
+        let items = Array(0..<40)
+        XCTAssertEqual(SeededShuffle.shuffle(items, seed: 42), SeededShuffle.shuffle(items, seed: 42))
+    }
+
+    func testDifferentSeedsDifferentOrder() {
+        let items = Array(0..<40)
+        XCTAssertNotEqual(SeededShuffle.shuffle(items, seed: 1), SeededShuffle.shuffle(items, seed: 2))
+    }
+
+    func testNothingIsLostOrDuplicated() {
+        let items = (0..<200).map { "video-\($0)" }
+        let shuffled = SeededShuffle.shuffle(items, seed: 7)
+        XCTAssertEqual(shuffled.count, items.count)
+        XCTAssertEqual(Set(shuffled), Set(items))
+    }
+
+    func testSmallInputsAreReturnedAsIs() {
+        XCTAssertEqual(SeededShuffle.shuffle([Int](), seed: 5), [])
+        XCTAssertEqual(SeededShuffle.shuffle([1], seed: 5), [1])
+    }
+
+    func testOrderDoesNotDependOnProcessRandomness() {
+        // A fixed seed must produce a fixed sequence forever, so a page does not
+        // shuffle itself between renders.
+        let first = SeededShuffle.shuffle(Array(0..<10), seed: 99)
+        let second = SeededShuffle.shuffle(Array(0..<10), seed: 99)
+        XCTAssertEqual(first, second)
+        XCTAssertNotEqual(first, Array(0..<10))
+    }
+}

@@ -37,6 +37,10 @@ struct TubeShelfCheck {
                 let ok = await fetchOne(arguments[index + 1])
                 exit(ok ? 0 : 1)
             }
+            if let index = arguments.firstIndex(of: "--playlist"), index + 1 < arguments.count {
+                let ok = await fetchPlaylist(arguments[index + 1])
+                exit(ok ? 0 : 1)
+            }
             if let index = arguments.firstIndex(of: "--backup"), index + 1 < arguments.count {
                 let library = try store.load()
                 let url = URL(fileURLWithPath: arguments[index + 1])
@@ -100,6 +104,7 @@ struct TubeShelfCheck {
           (no flags)        offline checks: links, tagging, shelf, deck, disk
           --probe           on-device model status + live tag suggestions
           --fetch <link>    metadata and suggestions for one video
+          --playlist <link> list the videos in a playlist
           --seed-demo       add the seven example videos
           --reset           empty the library
           --backup <path>        write a versioned backup file
@@ -296,6 +301,25 @@ struct TubeShelfCheck {
             }
         }
         return names.sorted()
+    }
+
+    static func fetchPlaylist(_ raw: String) async -> Bool {
+        guard let id = YouTubeURL.playlistID(from: raw) else {
+            print("Not a playlist link: \(raw)")
+            return false
+        }
+        do {
+            let metadata = try await PlaylistService().fetch(playlistID: id)
+            print("Playlist  \(metadata.title)")
+            print("Items     \(metadata.items.count)\(metadata.truncated ? " (limit reached)" : "")")
+            for item in metadata.items.prefix(6) {
+                print("  • \(item.title) — \(item.channel)")
+            }
+            return true
+        } catch {
+            print("Playlist fetch failed: \(error.localizedDescription)")
+            return false
+        }
     }
 
     // MARK: - Library maintenance

@@ -29,13 +29,47 @@ struct ShelfView: View {
                     Text(model.filter.title)
                         .font(.system(size: 21, weight: .semibold, design: .rounded))
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
                 }
                 Text(model.subtitle)
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
+            if model.isShuffled {
+                Button {
+                    model.clearShuffle()
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("Newest")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.accent)
+                .help("Back to newest first")
+            }
+
             Spacer(minLength: 12)
             ShelfSearchField(model: model)
+            Menu {
+                Button("Shuffle again") { model.shuffle() }
+                Button("Newest first") { model.clearShuffle() }
+                    .disabled(!model.isShuffled)
+            } label: {
+                Image(systemName: "shuffle")
+                    .font(.system(size: 11, weight: .semibold))
+            } primaryAction: {
+                model.shuffle()
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .foregroundStyle(model.isShuffled ? Theme.accent : Color.secondary)
+            .help("Shuffle these videos — click again for a new order")
             if !model.visibleVideos.isEmpty {
                 Button {
                     if let first = model.pagedVideos.first ?? model.visibleVideos.first {
@@ -48,6 +82,7 @@ struct ShelfView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
                 .controlSize(.small)
+                .fixedSize()
                 .keyboardShortcut(.return, modifiers: [.command])
                 .help("Walk through this category as slides")
             }
@@ -61,6 +96,7 @@ struct ShelfView: View {
         switch model.filter {
         case .all: "rectangle.stack"
         case .favorites: "star"
+        case .unwatched: "eye.slash"
         case .unsorted: "tray"
         case .tag(let name): TagTaxonomy.symbol(for: name)
         case .channel: "person.2"
@@ -291,13 +327,35 @@ struct VideoCard: View {
                         }
                     }
 
-                if video.isFavorite {
-                    Image(systemName: "star.fill")
+                VStack {
+                    HStack {
+                        Spacer()
+                        if video.isFavorite || hovering {
+                            Button {
+                                model.toggleFavorite(video)
+                            } label: {
+                                Image(systemName: video.isFavorite ? "star.fill" : "star")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(video.isFavorite ? .yellow : .white)
+                                    .padding(6)
+                                    .background(.black.opacity(0.45), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .padding(7)
+                            .help(video.isFavorite ? "Remove from favorites" : "Mark as favorite")
+                        }
+                    }
+                    Spacer()
+                }
+
+                if video.watchStatus != .unwatched {
+                    Image(systemName: video.watchStatus == .done ? "checkmark.circle.fill" : "circle.lefthalf.filled")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(.white)
                         .padding(6)
                         .background(.black.opacity(0.45), in: Circle())
                         .padding(7)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 }
             }
 
@@ -357,6 +415,9 @@ struct VideoCard: View {
             Divider()
             Button(video.isFavorite ? "Remove from favorites" : "Mark as favorite") {
                 model.toggleFavorite(video)
+            }
+            Button(video.watchStatus == .done ? "Mark unwatched" : "Mark watched") {
+                model.toggleWatched(video)
             }
             Button("More from \(video.channel)") {
                 model.showChannel(video.channel)
@@ -423,7 +484,7 @@ struct ShelfSearchField: View {
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
-        .frame(width: 320)
+        .frame(width: 280)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color.primary.opacity(0.045))

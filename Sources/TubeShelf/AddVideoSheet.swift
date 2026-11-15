@@ -256,7 +256,7 @@ struct AddVideoSheet: View {
                     }
                     .foregroundStyle(.tertiary)
                 } else if let suggestion, !suggestion.tags.isEmpty {
-                    Label(suggestion.source.label, systemImage: suggestion.source == .onDeviceModel ? "sparkles" : "text.magnifyingglass")
+                    Label(suggestion.source.label, systemImage: suggestion.source == .onDeviceModel || suggestion.source == .localModel ? "sparkles" : "text.magnifyingglass")
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.violet)
                 }

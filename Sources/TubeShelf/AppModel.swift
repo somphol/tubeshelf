@@ -67,6 +67,24 @@ final class AppModel {
             scheduleSpotlight()
         }
     }
+
+    var localAIEnabled: Bool = Preferences.localAIEnabled {
+        didSet { Preferences.localAIEnabled = localAIEnabled }
+    }
+    var localAIURL: String = Preferences.localAIURL {
+        didSet { Preferences.localAIURL = localAIURL }
+    }
+    var localAIModel: String = Preferences.localAIModel {
+        didSet { Preferences.localAIModel = localAIModel }
+    }
+    /// nil unless a server is enabled and its URL is usable.
+    var localAIConfig: LocalAIConfig? {
+        guard localAIEnabled else { return nil }
+        let url = localAIURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return nil }
+        let model = localAIModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        return LocalAIConfig(baseURL: url, model: model.isEmpty ? "system" : model)
+    }
     var isAddPlaylistToCatalogPresented = false
     /// Debug snapshot hook: opens the catalog sheet with a playlist ready.
     var catalogPlaylistPrefill: String?
@@ -1124,7 +1142,8 @@ final class AppModel {
             channel: metadata.channel,
             description: metadata.description,
             channelHint: library.channelAffinity(for: metadata.channel),
-            knownCategories: library.tagCounts.map(\.name)
+            knownCategories: library.tagCounts.map(\.name),
+            localAI: localAIConfig
         )
     }
 
@@ -1289,6 +1308,21 @@ enum Preferences {
     static var spotlightEnabled: Bool {
         get { defaults.object(forKey: "spotlightEnabled") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "spotlightEnabled") }
+    }
+
+    static var localAIEnabled: Bool {
+        get { defaults.object(forKey: "localAIEnabled") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "localAIEnabled") }
+    }
+
+    static var localAIURL: String {
+        get { defaults.string(forKey: "localAIURL") ?? "http://127.0.0.1:1976/v1" }
+        set { defaults.set(newValue, forKey: "localAIURL") }
+    }
+
+    static var localAIModel: String {
+        get { defaults.string(forKey: "localAIModel") ?? "system" }
+        set { defaults.set(newValue, forKey: "localAIModel") }
     }
 
     static var activeProfileID: String? {

@@ -13,7 +13,7 @@ JSON file on this Mac; no account, no server, no subscription.
 | | |
 |---|---|
 | Run | macOS 14 or newer (built and verified on macOS 27) |
-| AI tagging | macOS 26+ with Apple Intelligence enabled. Without it, a keyword classifier takes over and the app says so. |
+| AI tagging | Apple Intelligence (macOS 26+), or any OpenAI-compatible local server such as `fm serve`, Ollama or LM Studio. Without either, a keyword classifier takes over and the app says so. |
 | Build | Xcode 16+ / Swift 6 toolchain |
 
 ## Build and run
@@ -307,7 +307,10 @@ swift run tubeshelf-check --help                 # every flag
 | `Sources/TubeShelfCore/YouTubeURL.swift` | Every link shape → 11-character video ID |
 | `.../VideoMetadataService.swift` | oEmbed for title/channel, best-effort page scrape for description and duration |
 | `.../TagTaxonomy.swift` | Categories, keywords, aliases, normalisation |
-| `.../TagEngine.swift` | Foundation Models call + keyword fallback + availability reporting |
+| `.../TagEngine.swift` | Apple model → local server → keyword fallback, in that order |
+| `.../LocalAIModel.swift` | Minimal Chat Completions client; accepts only allowed categories |
+| `.../GuestNameExtractor.swift` | Conservative guest-name suggestions from title or opening bio |
+| `.../FormatTagger.swift` | Evidence-only `Talks & Podcasts` detection |
 | `.../Library.swift` | Pure shelf model: filters, scoped search, pins, merge, sorted tag counts |
 | `.../LibraryStore.swift` | Atomic JSON persistence |
 | `.../DeckModel.swift` | Slide index, clamping, progress |
@@ -331,12 +334,15 @@ swift run tubeshelf-check --help                 # every flag
 - The Foundation Models path is compiled against the macOS 26 SDK but could not
   be exercised on this machine: the Apple Intelligence model asset is not
   downloaded, so `SystemLanguageModel` reports `modelNotReady` and the app uses
-  the keyword classifier. Turn Apple Intelligence on in System Settings and the
-  model path activates with no rebuild.
+  the keyword classifier. Enabling Siri/Apple Intelligence starts that download;
+  `fm models` shows when it is ready.
+- The optional local-server path is verified against a stub Chat Completions
+  endpoint, not against a live model. In Settings, point it at
+  `http://127.0.0.1:1976/v1` (`fm serve`) or `http://127.0.0.1:11434/v1` (Ollama).
 - No OAuth, so the app cannot read your subscriptions or playlists; it only sees
   links you paste.
-- Inline playback uses the privacy-preserving `youtube-nocookie` embed. Videos
-  that forbid embedding fall back to *Open on YouTube*.
+- Playback always opens YouTube. The embedded player returns errors 152/153 in
+  WKWebView, so the app does not ship an iframe.
 - Description and duration come from scraping the watch page; if YouTube changes
   that markup, tags fall back to title + channel only.
 - Single-user, single-machine. No sync.

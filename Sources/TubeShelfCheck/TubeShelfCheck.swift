@@ -286,11 +286,19 @@ struct TubeShelfCheck {
             print("Channel \(metadata.channel)")
             print("Length  \(metadata.durationSeconds.map { "\($0)s" } ?? "unknown")")
             print("Desc    \(metadata.description.prefix(160))")
+            let environment = ProcessInfo.processInfo.environment
+            let localAI = environment["TUBESHELF_AI_URL"].map {
+                LocalAIConfig(
+                    baseURL: $0,
+                    model: environment["TUBESHELF_AI_MODEL"] ?? "system"
+                )
+            }
             let suggestion = await TagEngine().suggest(
                 title: metadata.title,
                 channel: metadata.channel,
                 description: metadata.description,
-                knownCategories: knownCategories()
+                knownCategories: knownCategories(),
+                localAI: localAI
             )
             print("Tags    \(suggestion.tags.joined(separator: ", "))  [\(suggestion.source.label)]")
             return true

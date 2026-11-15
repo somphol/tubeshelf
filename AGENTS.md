@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 134 unit tests
+swift test                                   # 139 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -252,6 +252,14 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   explicit "podcast" mention, a numbered episode (`#2501`) plus a guest, or two
   promo markers in the opening description. It never fires on duration alone, so a
   long tutorial with a named co-host stays a tutorial.
+- **Model order is Apple → local server → keywords.** `TagEngine` tries Foundation
+  Models, then the opt-in OpenAI-compatible endpoint in Settings (`LocalAIConfig`,
+  default `http://127.0.0.1:1976/v1` model `system`), then `HeuristicTagger`. The
+  endpoint may only return allowed categories; `LocalAIClient.parse` drops people
+  and inventions, while guest/format extras stay deterministic. `fm serve`,
+  Ollama and LM Studio all speak this protocol. Verify headlessly with
+  `TUBESHELF_AI_URL=http://127.0.0.1:1976/v1 swift run tubeshelf-check --fetch <link>`
+  and expect `[Local AI]`.
 - **Persisted JSON is tolerant**: new fields use `decodeIfPresent`, dates are
   truncated to whole seconds for exact round-trips, and a corrupt file is moved
   aside, never overwritten.
@@ -269,10 +277,13 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 ## Known issues
 
 - The Foundation Models call is compiled but **not runtime-verified**: this
-  machine has no downloaded model asset (`modelNotReady`), so only the keyword
-  fallback has actually executed. Verify on a Mac with Apple Intelligence enabled
-  using `swift run tubeshelf-check --probe` and expect `Apple Intelligence` as the
-  source.
+  machine has no downloaded model asset (`fm models` reports `modelNotReady`), so
+  only the keyword fallback has actually executed. Enabling Siri/Apple Intelligence
+  starts the asset download; then `swift run tubeshelf-check --probe` should say
+  `Apple Intelligence`. PCC via `fm` only works from Terminal.app, not from this
+  shell.
+- The local-server path is verified against a stub OpenAI endpoint, not a live
+  model. Its 12 s timeout and error path deliberately fall back to keywords.
 - Google Drive for Desktop needs an admin install and an interactive sign-in, so
   the Drive button is disabled until `My Drive` appears. That is intentional; the
   Settings row links to the download.

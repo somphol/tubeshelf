@@ -181,6 +181,44 @@ struct SettingsView: View {
                 }
             }
 
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 6) {
+                    Label("Local AI server", systemImage: "desktopcomputer")
+                        .font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { model.localAIEnabled },
+                        set: { model.localAIEnabled = $0 }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
+                Text("An OpenAI-compatible endpoint on this Mac: fm serve, Ollama or LM Studio. Titles and descriptions go only to this URL.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    TextField("http://127.0.0.1:1976/v1", text: Binding(
+                        get: { model.localAIURL },
+                        set: { model.localAIURL = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+                    TextField("system", text: Binding(
+                        get: { model.localAIModel },
+                        set: { model.localAIModel = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+                    .frame(width: 100)
+                }
+                .disabled(!model.localAIEnabled)
+                Text("fm serve defaults to port 1976; Ollama to 11434/v1 (model qwen2.5:3b).")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {

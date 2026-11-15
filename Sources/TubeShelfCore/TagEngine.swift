@@ -50,6 +50,7 @@ public struct TagEngine: Sendable {
         description: String = "",
         channelHint: String? = nil,
         knownCategories: [String] = [],
+        localAI: LocalAIConfig? = nil,
         limit: Int = 3
     ) async -> TagSuggestion {
         let base = await categorySuggestion(
@@ -58,6 +59,7 @@ public struct TagEngine: Sendable {
             description: description,
             channelHint: channelHint,
             knownCategories: knownCategories,
+            localAI: localAI,
             limit: limit
         )
         let guest = GuestNameExtractor().guest(
@@ -86,6 +88,7 @@ public struct TagEngine: Sendable {
         description: String,
         channelHint: String?,
         knownCategories: [String],
+        localAI: LocalAIConfig?,
         limit: Int
     ) async -> TagSuggestion {
         let heuristic = HeuristicTagger().suggest(
@@ -133,6 +136,29 @@ public struct TagEngine: Sendable {
             }
         }
         #endif
+
+        // An OpenAI-compatible server (fm serve, Ollama, LM Studio) fills the
+        // same role as Apple's model: categories only, resolved against the
+        // allowed list. A failure is silent and the keyword answer stands.
+        if let localAI {
+            do {
+                let raw = try await LocalAIClient(config: localAI).suggest(
+                    title: title,
+                    channel: channel,
+                    description: description,
+                    knownCategories: knownCategories,
+                    limit: limit
+                )
+                if !raw.isEmpty {
+                    return TagSuggestion(
+                        tags: TagTaxonomy.withParents(raw, limit: max(limit, raw.count)),
+                        source: .localModel
+                    )
+                }
+            } catch {
+                // Fall through to the deterministic answer.
+            }
+        }
 
         return fallback
     }

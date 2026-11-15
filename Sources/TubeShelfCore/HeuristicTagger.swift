@@ -2,12 +2,14 @@ import Foundation
 
 public enum TagSource: String, Sendable, Codable {
     case onDeviceModel
+    case localModel
     case heuristic
     case manual
 
     public var label: String {
         switch self {
         case .onDeviceModel: "Apple Intelligence"
+        case .localModel: "Local AI"
         case .heuristic: "Keyword match"
         case .manual: "Manual"
         }

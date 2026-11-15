@@ -254,6 +254,9 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
 - **Never mix model and keyword answers.** If Foundation Models returns one
   accurate category, keep exactly that; topping it up with heuristic guesses was
   removed on purpose because it made suggestions less relevant.
+- **A new uncategorised video is confirmed.** `AddVideoSheet` warns in the footer
+  and asks "Add without a category?" before saving Unsorted. Do not make the
+  primary button a silent path to Unsorted.
 - **A guest is a suggested tag, never a category.** `GuestNameExtractor` reads
   conservative patterns only: a title prefix before a colon or pipe, "with /
   feat. / featuring", "Guest:", "in conversation with / joined by", and an opening

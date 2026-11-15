@@ -10,6 +10,7 @@ struct AddVideoSheet: View {
     @State private var phase: Phase = .idle
     @State private var metadata: VideoMetadata?
     @State private var tags: [String] = []
+    @State private var confirmNoCategory = false
     @State private var suggestion: TagSuggestion?
     @State private var isClassifying = false
     @State private var note: String = ""
@@ -344,17 +345,35 @@ struct AddVideoSheet: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            if duplicateVideo == nil, tags.isEmpty, canSave {
+                Text("No category yet — this will be Unsorted")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+            }
             Spacer()
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(duplicateVideo == nil ? "Add to shelf" : "Update video") { save() }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(!canSave || !hasChanges)
+            Button(duplicateVideo == nil ? "Add to shelf" : "Update video") {
+                if duplicateVideo == nil && tags.isEmpty {
+                    confirmNoCategory = true
+                } else {
+                    save()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+            .keyboardShortcut(.defaultAction)
+            .disabled(!canSave || !hasChanges)
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 13)
+        .alert("Add without a category?", isPresented: $confirmNoCategory) {
+            Button("Cancel", role: .cancel) {}
+            Button("Add as Unsorted") { save() }
+        } message: {
+            Text("This video will appear under Unsorted until you give it a category.")
+        }
     }
 
     // MARK: - Behaviour

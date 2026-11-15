@@ -13,7 +13,7 @@ JSON file on this Mac; no account, no server, no subscription.
 The latest build is on the [Releases page](https://github.com/somphol/tubeshelf/releases/latest).
 It is built for Apple Silicon (M1 or newer) and requires macOS 14 or later.
 
-1. Download `TubeShelf-1.0-arm64.zip` and unzip it.
+1. Download the latest `.zip` asset and unzip it.
 2. Drag `TubeShelf.app` into `/Applications`.
 3. The app is **ad-hoc signed, not notarised by Apple**. On first launch,
    right-click the app and choose **Open**, then confirm. If macOS still refuses,
@@ -76,7 +76,8 @@ Verify the whole thing (tests, headless checks, bundle, signature):
    category field is a type-ahead: it lists your own categories that match what
    you type, then library matches, and always offers **Create “…”** plus a
    **Press ⏎** hint so a brand-new category is one keystroke away.
-3. **Add to shelf**. Duplicates are detected by video ID, not by title.
+3. **Add to shelf**. Duplicates are detected by video ID, not by title. A new
+   video with no category asks for confirmation; it is never silently Unsorted.
 4. The sidebar lists **All videos**, **Favorites**, **Unsorted**, then **Pinned**
    categories, then every other category with a count. The field above the list
    filters the categories themselves; the shelf field searches videos. **⌘F**

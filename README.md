@@ -8,6 +8,24 @@ click-through slide deck. Categories can be pinned, renamed, merged and sorted b
 size, and the search field can look at titles only. Everything is stored in one
 JSON file on this Mac; no account, no server, no subscription.
 
+## Install
+
+The latest build is on the [Releases page](https://github.com/somphol/tubeshelf/releases/latest).
+It is built for Apple Silicon (M1 or newer) and requires macOS 14 or later.
+
+1. Download `TubeShelf-1.0-arm64.zip` and unzip it.
+2. Drag `TubeShelf.app` into `/Applications`.
+3. The app is **ad-hoc signed, not notarised by Apple**. On first launch,
+   right-click the app and choose **Open**, then confirm. If macOS still refuses,
+   open **System Settings → Privacy & Security** and choose **Open Anyway**.
+4. Prefer building from source if you can; see below.
+
+Do not disable Gatekeeper globally, and only open builds you trust. The app has
+no installer, no background login item, and no account.
+
+**Free to use** under the [MIT License](LICENSE). No warranty and no liability;
+see [DISCLAIMER.md](DISCLAIMER.md). Keep your own backups.
+
 ## Requirements
 
 | | |
@@ -19,7 +37,10 @@ JSON file on this Mac; no account, no server, no subscription.
 ## Build and run
 
 ```bash
-./scripts/build-app.sh          # release build → dist/TubeShelf.app
+git clone https://github.com/somphol/tubeshelf.git
+cd tubeshelf
+swift test
+CONFIG=release ./scripts/build-app.sh   # release build → dist/TubeShelf.app
 open dist/TubeShelf.app
 ```
 
@@ -337,6 +358,14 @@ swift run tubeshelf-check --help                 # every flag
 | `scripts/build-app.sh` | Builds and ad-hoc signs the `.app` |
 | `scripts/make-icon.swift` | Draws the icon from code at build time |
 | `scripts/verify.sh` | The full gate |
+
+## Disclaimer
+
+This is an unofficial project, not affiliated with YouTube, Google or Apple.
+It is provided free of charge under the MIT License, **as is, without warranty**.
+You are responsible for your data and backups. The downloadable build is ad-hoc
+signed, not notarised, so macOS will warn on first launch. See
+[DISCLAIMER.md](DISCLAIMER.md) for the full note.
 
 ## Known limitations
 

@@ -6,8 +6,8 @@ Read `README.md` first; this file is the handoff for whoever changes the code ne
 
 TubeShelf is a native SwiftUI macOS app that stores YouTube links locally, tags
 them with Apple's on-device Foundation Models (or a keyword fallback), and browses
-each category as a slide deck. It is not a YouTube client: no login, no feed, no
-playlists, no uploads.
+each category as a slide deck. It also keeps an optional course/playlist catalog.
+It is not a YouTube client: no login, no feed, no uploads.
 
 ## Commands
 
@@ -321,7 +321,8 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   (full name on hover). Shortening the row font is not the fix; the name is data.
 - Keyword suggestions are precision-first: a video whose only signal is in the
   description lands in Unsorted rather than getting a loose tag.
-- Inline playback needs network access and a video that allows embedding.
+- Playback always opens YouTube; there is no embedded player (errors 152/153 in
+  WKWebView).
 - The map shows shared-video links only. A library whose categories never share a
   video has no nodes; the view says so instead of drawing a ring.
 - The orbit view is a showpiece: depth occludes nodes and only the top eight carry
@@ -343,8 +344,11 @@ before re-researching any of those questions.
 
 ## Continuity
 
-- Repository: <https://github.com/somphol/tubeshelf> — **private**, no Pages, no
-  public releases. Do not publish the app bundle or anyone's library data here.
+- Repository: <https://github.com/somphol/tubeshelf> — **public**, MIT licensed,
+  no Pages. Releases carry an ad-hoc-signed, arm64-only app; the README explains
+  the Gatekeeper warning. Never commit library data, tokens or another person's
+  shelf. The disclaimer lives in `DISCLAIMER.md`; keep it in sync with any change
+  to distribution.
 - Read-only web viewer is **implemented** and live at
   <https://somphol.github.io/tubeshelf-web-ro/>, from the **public** repo
   <https://github.com/somphol/tubeshelf-web-ro>. It must only ever hold code and a
@@ -358,3 +362,7 @@ before re-researching any of those questions.
 - A clone is enough to build: `swift build`, `swift test`, then
   `./scripts/build-app.sh`. The icon is drawn at build time, so no binary assets
   are required.
+- Release assets are built from `dist/TubeShelf.app` with
+  `ditto -c -k --sequesterRsrc --keepParent`, then uploaded to a GitHub release.
+  The bundle is ad-hoc signed and not notarised, so the README's right-click Open
+  steps are required. Recompute and publish the SHA-256 with each asset.

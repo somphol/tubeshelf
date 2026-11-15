@@ -139,6 +139,25 @@ the same order, and *Newest* returns to chronological.
 videos get a small badge on the card. Videos saved before this feature count as
 unwatched, which is the honest default.
 
+## Playlists
+
+**Add Playlist…** (**⇧⌘N**) reads a public or unlisted playlist, lists every video
+with its channel and length, marks the ones already on your shelf, and adds only
+the ones you tick.
+
+Every row has a full category editor before anything is added: multiple
+categories, the same type-ahead field as the rest of the app (**including creating
+a new category**), and **Suggest again**, which fetches the video's real
+description and re-runs the classifier — the initial pre-fill only has the title,
+because a playlist page carries no descriptions. Nothing is filed until you press
+Add, and the categories you see are exactly what gets written. A separate field
+adds one category to every selected video in a single step.
+
+Private playlists — Watch later, Liked videos, anything without a share link —
+cannot be read without signing in, so the sheet will say the playlist does not
+exist. A single fetch returns the first batch (YouTube ships about 100); longer
+playlists are flagged as partial rather than silently truncated.
+
 ## Profiles
 
 A profile is a whole separate shelf. Your own videos never mix with a friend's

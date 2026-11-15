@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import TubeShelfCore
 
 #if DEBUG
 /// Developer-only window snapshot. Screen recording permission is not needed
@@ -47,6 +48,32 @@ enum Snapshotter {
                 model.isChannelBrowserPresented = true
             case "profiles":
                 model.isProfileManagerPresented = true
+            case "playlist":
+                model.playlistImportPrefill = SnapshotConfig.playlistPrefill
+                model.isPlaylistImportPresented = true
+            case "playlist-editor":
+                let item = PlaylistItem(
+                    videoID: "kuOxDh3egN0",
+                    title: "Why is calculus so ... EASY ?",
+                    channel: "Mathologer",
+                    durationSeconds: 2312
+                )
+                let hosting = NSHostingView(rootView: PlaylistItemEditorSheet(
+                    model: model,
+                    item: item,
+                    initialTags: ["Math", "Calculus"]
+                ) { _ in })
+                let window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 560, height: 460),
+                    styleMask: [.titled, .closable],
+                    backing: .buffered,
+                    defer: false
+                )
+                window.title = "Playlist item"
+                window.contentView = hosting
+                window.center()
+                window.makeKeyAndOrderFront(nil)
+                previewWindow = window
             case "channel":
                 if let top = model.library.channelCounts().first {
                     model.showChannel(top.name)
@@ -126,6 +153,10 @@ enum SnapshotConfig {
 
     static var appearance: String? {
         ProcessInfo.processInfo.environment["TUBESHELF_SNAPSHOT_APPEARANCE"]
+    }
+
+    static var playlistPrefill: String? {
+        ProcessInfo.processInfo.environment["TUBESHELF_PLAYLIST"]
     }
 
     static var cloudRoot: URL? {

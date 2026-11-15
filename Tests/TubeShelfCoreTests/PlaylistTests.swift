@@ -62,6 +62,52 @@ final class PlaylistTests: XCTestCase {
         XCTAssertFalse(metadata.truncated)
     }
 
+    func testParsesTheCurrentLockupMarkup() throws {
+        let lockup: [String: Any] = [
+            "contentId": "kuOxDh3egN0",
+            "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+            "metadata": [
+                "lockupMetadataViewModel": [
+                    "title": ["content": "Why is calculus so ... EASY ?"],
+                    "metadata": [
+                        "contentMetadataViewModel": [
+                            "metadataRows": [[
+                                "metadataParts": [["text": ["content": "Mathologer"]]]
+                            ]]
+                        ]
+                    ]
+                ]
+            ],
+            "contentImage": [
+                "thumbnailViewModel": [
+                    "overlays": [[
+                        "thumbnailBottomOverlayViewModel": [
+                            "badges": [["thumbnailBadgeViewModel": ["text": "38:32"]]]
+                        ]
+                    ]]
+                ]
+            ]
+        ]
+
+        let page: [String: Any] = [
+            "contents": ["items": [["lockupViewModel": lockup]]],
+            "continuation": ["continuationCommand": ["token": "abc"]]
+        ]
+
+        let metadata = try PlaylistParser.parse(
+            html: try html(with: page),
+            playlistID: "PLsut0F29QsHjQmcTxUIjlfrPxa2ZbVetP",
+            limit: 200
+        )
+
+        XCTAssertEqual(metadata.items.count, 1)
+        XCTAssertEqual(metadata.items[0].videoID, "kuOxDh3egN0")
+        XCTAssertEqual(metadata.items[0].title, "Why is calculus so ... EASY ?")
+        XCTAssertEqual(metadata.items[0].channel, "Mathologer")
+        XCTAssertEqual(metadata.items[0].durationSeconds, 2312)
+        XCTAssertTrue(metadata.truncated, "a continuation token means there are more items")
+    }
+
     func testRespectsTheLimitAndFlagsTruncation() throws {
         let metadata = try PlaylistParser.parse(
             html: try html(with: fixture()),

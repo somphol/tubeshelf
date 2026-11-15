@@ -21,6 +21,9 @@ final class AppModel {
     var isAddPresented = false
     var isCategoryManagerPresented = false
     var isChannelBrowserPresented = false
+    var isPlaylistImportPresented = false
+    /// Used by the debug snapshot mode to open the sheet with a playlist ready.
+    var playlistImportPrefill: String?
     var pageIndex = 0
     /// When set, the grid and the deck use this shuffle instead of newest-first.
     var shuffleSeed: UInt64?
@@ -491,6 +494,48 @@ final class AppModel {
 
     func openChannelBrowser() {
         isChannelBrowserPresented = true
+    }
+
+    func openPlaylistImport() {
+        isPlaylistImportPresented = true
+    }
+
+    /// Adds the chosen playlist items with the categories that were reviewed in
+    /// the sheet. Nothing is guessed during the import: what you saw is what gets
+    /// filed. The library is saved once, not once per video.
+    @discardableResult
+    func importPlaylist(
+        _ metadata: PlaylistMetadata,
+        selection: Set<String>,
+        tagsByVideo: [String: [String]]
+    ) -> Int {
+        var added = 0
+        for item in metadata.items where selection.contains(item.videoID) {
+            guard !library.contains(youtubeID: item.videoID) else { continue }
+            let video = Video(
+                youtubeID: item.videoID,
+                title: item.title,
+                channel: item.channel,
+                tags: TagNormalizer.merge(tagsByVideo[item.videoID] ?? []),
+                durationSeconds: item.durationSeconds
+            )
+            if library.add(video) { added += 1 }
+        }
+        save()
+        flash("Added \(added) video\(added == 1 ? "" : "s") from “\(metadata.title)”")
+        return added
+    }
+
+    /// Categories offered in the playlist sheet: the shelf's own first, then the
+    /// built-in library.
+    var categoryChoices: [String] {
+        var names = library.tagCounts.map(\.name)
+        for name in TagTaxonomy.names where !names.contains(where: {
+            $0.caseInsensitiveCompare(name) == .orderedSame
+        }) {
+            names.append(name)
+        }
+        return names
     }
 
     func showChannel(_ name: String) {

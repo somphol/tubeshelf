@@ -23,6 +23,11 @@ struct TubeShelfApp: App {
             }
             CommandGroup(after: .newItem) {
                 Divider()
+                Button("Add Playlist…") {
+                    model.openPlaylistImport()
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+
                 Button("Manage Categories…") {
                     model.openCategoryManager()
                 }

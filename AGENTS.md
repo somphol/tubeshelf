@@ -88,6 +88,19 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - **`AppModel.store` is mutable now.** Anything that caches a `LibraryStore` across
   a profile switch will write into the wrong shelf. Always go through
   `model.store` / `model.save()`.
+- **Playlist import reads `ytInitialData`, never an API key.** Support both the
+  legacy `playlistVideoRenderer` and the current `lockupViewModel` markup; YouTube
+  changes this. Private playlists return zero items by design — never add cookie
+  auth to work around it. One page ships ~100 items, so a continuation token means
+  "partial", not "complete".
+- **Playlist categories are reviewed, never guessed at add time.** Rows pre-fill
+  from `HeuristicTagger` on the title only (a playlist page has no descriptions);
+  the per-row editor can fetch metadata and re-run `TagEngine`, and import writes
+  exactly `tagsByVideo`. Do not reintroduce suggestions inside the import loop —
+  that is what makes bulk adds unpredictable.
+- **Large imports are sequential.** Each item gets a category suggestion; with the
+  on-device model enabled, 100 items can take a while. The sheet stays disabled
+  while it runs. Do not parallelise model calls without rate thinking.
 - **Shuffle is seeded, never `shuffled()` in a view.** `SeededShuffle` with a
   stored seed keeps the order stable across renders and pages; clicking stores a
   new seed. The deck must keep receiving `visibleVideos` so its order matches the

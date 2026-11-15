@@ -156,8 +156,8 @@ public enum TagTaxonomy {
             "league of legends", "boss fight", "rpg", "indie game", "review game"
         ]),
         VideoCategory(name: "DIY & Home", symbol: "hammer", keywords: [
-            "diy", "build", "building", "woodworking", "carpentry", "repair", "fix", "renovation",
-            "home improvement", "garden", "gardening", "ikea", "furniture", "tools", "workshop",
+            "diy", "woodworking", "carpentry", "home improvement", "home repair", "renovation",
+            "gardening", "ikea", "furniture", "tools", "workshop",
             "plumbing", "electrical", "painting walls", "tiny house", "interior"
         ]),
         VideoCategory(name: "Photography", symbol: "camera", keywords: [

@@ -26,6 +26,14 @@ struct RootView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
+                        model.openPlaylistImport()
+                    } label: {
+                        Label("Add playlist", systemImage: "list.bullet.rectangle")
+                    }
+                    .help("Add every video from a playlist (⇧⌘N)")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
                         model.isAddPresented = true
                     } label: {
                         Label("Add video", systemImage: "plus")
@@ -52,6 +60,9 @@ struct RootView: View {
         }
         .sheet(isPresented: $model.isProfileManagerPresented) {
             ProfileManagerView(model: model)
+        }
+        .sheet(isPresented: $model.isPlaylistImportPresented) {
+            PlaylistImportSheet(model: model)
         }
         .sheet(isPresented: Binding(
             get: { model.editingVideoID != nil },

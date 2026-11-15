@@ -78,37 +78,19 @@ enum PlaylistParser {
               let root = try? JSONSerialization.jsonObject(with: data)
         else { throw PlaylistError.unreadable }
 
-        var renderers: [[String: Any]] = []
-        collectRenderers(root, into: &renderers)
-
         var seen = Set<String>()
         var items: [PlaylistItem] = []
-        for renderer in renderers {
-            guard let videoID = renderer["videoId"] as? String,
-                  YouTubeURL.isVideoID(videoID),
-                  seen.insert(videoID).inserted
-            else { continue }
-
-            let title = title(from: renderer) ?? "Untitled"
-            let channel = channel(from: renderer) ?? ""
-            let duration = durationSeconds(from: renderer)
-
-            items.append(PlaylistItem(
-                videoID: videoID,
-                title: title,
-                channel: channel,
-                durationSeconds: duration
-            ))
-            if items.count >= limit { break }
-        }
+        collectItems(root, into: &items, seen: &seen, limit: limit)
 
         guard !items.isEmpty else { throw PlaylistError.empty }
 
         return PlaylistMetadata(
             playlistID: playlistID,
-            title: playlistTitle(from: root) ?? "Playlist",
+            title: playlistTitle(from: root) ?? pageTitle(from: html) ?? "Playlist",
             items: items,
-            truncated: items.count >= limit
+            // The page only ships the first batch; a continuation token means the
+            // playlist is longer than what we could read in one request.
+            truncated: items.count >= limit || hasContinuation(root)
         )
     }
 
@@ -129,19 +111,116 @@ enum PlaylistParser {
         return nil
     }
 
-    private static func collectRenderers(_ node: Any, into result: inout [[String: Any]]) {
+    /// Walks the tree in document order so the playlist's own ordering survives.
+    /// Supports both the classic `playlistVideoRenderer` and the current
+    /// `lockupViewModel` markup.
+    private static func collectItems(
+        _ node: Any,
+        into result: inout [PlaylistItem],
+        seen: inout Set<String>,
+        limit: Int
+    ) {
+        if result.count >= limit { return }
+
         if let dictionary = node as? [String: Any] {
-            if let renderer = dictionary["playlistVideoRenderer"] as? [String: Any] {
-                result.append(renderer)
+            if let renderer = dictionary["playlistVideoRenderer"] as? [String: Any],
+               let videoID = renderer["videoId"] as? String,
+               YouTubeURL.isVideoID(videoID),
+               seen.insert(videoID).inserted {
+                result.append(PlaylistItem(
+                    videoID: videoID,
+                    title: title(from: renderer) ?? "Untitled",
+                    channel: channel(from: renderer) ?? "",
+                    durationSeconds: durationSeconds(from: renderer)
+                ))
+            } else if let lockup = dictionary["lockupViewModel"] as? [String: Any],
+                      lockup["contentType"] as? String == "LOCKUP_CONTENT_TYPE_VIDEO",
+                      let videoID = lockup["contentId"] as? String,
+                      YouTubeURL.isVideoID(videoID),
+                      seen.insert(videoID).inserted {
+                result.append(PlaylistItem(
+                    videoID: videoID,
+                    title: lockupTitle(from: lockup) ?? "Untitled",
+                    channel: lockupChannel(from: lockup) ?? "",
+                    durationSeconds: lockupDuration(from: lockup)
+                ))
             }
+
             for value in dictionary.values {
-                collectRenderers(value, into: &result)
+                collectItems(value, into: &result, seen: &seen, limit: limit)
             }
         } else if let array = node as? [Any] {
             for value in array {
-                collectRenderers(value, into: &result)
+                collectItems(value, into: &result, seen: &seen, limit: limit)
             }
         }
+    }
+
+    private static func lockupTitle(from lockup: [String: Any]) -> String? {
+        guard let metadata = lockup["metadata"] as? [String: Any],
+              let model = metadata["lockupMetadataViewModel"] as? [String: Any],
+              let title = model["title"] as? [String: Any],
+              let content = title["content"] as? String,
+              !content.isEmpty
+        else { return nil }
+        return content
+    }
+
+    private static func lockupChannel(from lockup: [String: Any]) -> String? {
+        guard let metadata = lockup["metadata"] as? [String: Any],
+              let model = metadata["lockupMetadataViewModel"] as? [String: Any],
+              let contentMetadata = model["metadata"] as? [String: Any],
+              let viewModel = contentMetadata["contentMetadataViewModel"] as? [String: Any],
+              let rows = viewModel["metadataRows"] as? [[String: Any]],
+              let parts = rows.first?["metadataParts"] as? [[String: Any]],
+              let text = parts.first?["text"] as? [String: Any],
+              let content = text["content"] as? String
+        else { return nil }
+        return content
+    }
+
+    private static func lockupDuration(from lockup: [String: Any]) -> Int? {
+        guard let image = lockup["contentImage"] as? [String: Any],
+              let thumbnail = image["thumbnailViewModel"] as? [String: Any],
+              let overlays = thumbnail["overlays"] as? [[String: Any]]
+        else { return nil }
+
+        for overlay in overlays {
+            guard let bottom = overlay["thumbnailBottomOverlayViewModel"] as? [String: Any],
+                  let badges = bottom["badges"] as? [[String: Any]]
+            else { continue }
+            for badge in badges {
+                guard let model = badge["thumbnailBadgeViewModel"] as? [String: Any],
+                      let text = model["text"] as? String
+                else { continue }
+                if let seconds = parseDuration(text) { return seconds }
+            }
+        }
+        return nil
+    }
+
+    private static func hasContinuation(_ node: Any) -> Bool {
+        if let dictionary = node as? [String: Any] {
+            if dictionary["continuationCommand"] != nil { return true }
+            return dictionary.values.contains { hasContinuation($0) }
+        }
+        if let array = node as? [Any] {
+            return array.contains { hasContinuation($0) }
+        }
+        return false
+    }
+
+    private static func pageTitle(from html: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: "<title>(.*?)</title>", options: [.dotMatchesLineSeparators]),
+              let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: html)
+        else { return nil }
+
+        let title = String(html[range])
+            .replacingOccurrences(of: " - YouTube", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? nil : title
     }
 
     private static func title(from renderer: [String: Any]) -> String? {

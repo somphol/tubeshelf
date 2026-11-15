@@ -63,11 +63,12 @@ Verify the whole thing (tests, headless checks, bundle, signature):
 8. Hovering a category in the sidebar reveals a ▶ that presents it directly;
    right-click to pin, present, rename, **merge into another category**, or delete
    it. The ⋯ menu next to *Categories* sorts the sidebar and opens the manager.
-9. **Views** — the header switch (**⌘1** grid, **⌘2** map) keeps the shelf and
-   adds an optional category map. Node area is the video count; a line means at
-   least one video carries both categories. Click filters and stays, double-click
-   opens the filtered shelf, right-click pins or presents. Categories with no
-   shared video stay hidden until they earn a link.
+9. **Views** — **⌘1** grid, **⌘2** map, **⌘3** 3D orbit. Node area is the video
+   count and colour is the category group; a line means at least one video carries
+   both categories. In the map, click filters and stays, double-click opens the
+   shelf, scroll/pinch zooms and drag pans. In orbit, left-drag turns the graph,
+   right-drag pans, scroll zooms, **Spin** rotates it and clicking a sphere filters.
+   Categories with no shared video stay hidden until they earn a link.
 
 Right-click a video for favorites, copying the link, editing categories and notes,
 or removing it. Right-click a category to rename or delete it. Settings (**⌘,**)
@@ -321,6 +322,7 @@ swift run tubeshelf-check --help                 # every flag
 | `.../DeckModel.swift` | Slide index, clamping, progress |
 | `.../CategoryGraph.swift` | Categories as nodes, shared-video edges, seeded layout |
 | `Sources/TubeShelf/CategoryMapView.swift` | Canvas map, hover/selection, legend |
+| `Sources/TubeShelf/CategoryOrbitView.swift` | SceneKit orbit view and camera controls |
 | `Sources/TubeShelf/AppModel.swift` | Observable app state and mutations |
 | `.../RootView.swift` | Split view, sidebar, toolbar, sheets |
 | `.../ShelfView.swift` | Grid of cards + the title/everything search field |

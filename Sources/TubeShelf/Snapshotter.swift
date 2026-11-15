@@ -46,6 +46,13 @@ enum Snapshotter {
                 model.isAddPresented = true
             case "map":
                 model.presentation = .map
+            case "orbit":
+                model.presentation = .orbit
+            case "orbit-selected":
+                model.presentation = .orbit
+                if model.combinedTagCounts.contains(where: { $0.name == "Math" }) {
+                    model.select(.tag("Math"))
+                }
             case "map-selected":
                 model.presentation = .map
                 if model.combinedTagCounts.contains(where: { $0.name == "Math" }) {

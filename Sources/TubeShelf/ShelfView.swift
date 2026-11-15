@@ -23,7 +23,7 @@ struct ShelfView: View {
         .onExitCommand {
             if model.isSelecting {
                 model.exitSelection()
-            } else if model.presentation == .map {
+            } else if model.presentation != .grid {
                 model.mapEscape()
             }
         }
@@ -42,6 +42,8 @@ struct ShelfView: View {
                         .keyboardShortcut("1", modifiers: .command)
                     Button("") { model.presentation = .map }
                         .keyboardShortcut("2", modifiers: .command)
+                    Button("") { model.presentation = .orbit }
+                        .keyboardShortcut("3", modifiers: .command)
                 }
                 .opacity(0)
                 .frame(width: 0, height: 0)
@@ -104,8 +106,8 @@ struct ShelfView: View {
             if !model.isBrowsingPlaylists {
                 presentationSwitcher
             }
-            if model.presentation == .map {
-                Text(model.mapHint)
+            if model.presentation != .grid {
+                Text(model.presentationHint)
                     .font(.system(size: 10.5))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
@@ -161,11 +163,13 @@ struct ShelfView: View {
                 .tag(ShelfPresentation.grid)
             Image(systemName: "point.3.connected.trianglepath.dotted")
                 .tag(ShelfPresentation.map)
+            Image(systemName: "cube.transparent")
+                .tag(ShelfPresentation.orbit)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .frame(width: 76)
-        .help("Shelf (⌘1) or category map (⌘2)")
+        .frame(width: 112)
+        .help("Shelf (⌘1), map (⌘2) or 3D orbit (⌘3)")
     }
 
     private var selectionControls: some View {
@@ -247,6 +251,8 @@ struct ShelfView: View {
             playlistGrid
         } else if model.presentation == .map {
             CategoryMapView(model: model)
+        } else if model.presentation == .orbit {
+            CategoryOrbitView(model: model)
         } else if model.visibleItems.isEmpty {
             emptyState
         } else {

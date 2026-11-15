@@ -14,6 +14,7 @@ enum LocalAIState: Equatable {
 enum ShelfPresentation: String, CaseIterable, Identifiable {
     case grid
     case map
+    case orbit
 
     var id: String { rawValue }
 }
@@ -158,7 +159,7 @@ final class AppModel {
     var presentation: ShelfPresentation = Preferences.presentation {
         didSet {
             Preferences.presentation = presentation
-            if presentation == .map, isSelecting {
+            if presentation != .grid, isSelecting {
                 exitSelection()
             }
         }
@@ -604,11 +605,21 @@ final class AppModel {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    var mapHint: String {
-        if let tag = filter.tagName {
-            return "\(tag) · click another node to filter"
+    var presentationHint: String {
+        switch presentation {
+        case .grid:
+            return ""
+        case .map:
+            if let tag = filter.tagName {
+                return "\(tag) · click another node to filter"
+            }
+            return "Click a category to filter · double-click to open the shelf"
+        case .orbit:
+            if let tag = filter.tagName {
+                return "\(tag) · drag to orbit · click another sphere to filter"
+            }
+            return "Drag to orbit · right-drag to pan · scroll to zoom · click to filter"
         }
-        return "Click a category to filter · double-click to open the shelf"
     }
 
     var subtitle: String {

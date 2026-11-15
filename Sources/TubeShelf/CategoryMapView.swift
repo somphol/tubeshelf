@@ -12,6 +12,11 @@ struct CategoryMapView: View {
     @State private var points: [String: MapPoint] = [:]
     @State private var hoveredID: String?
     @State private var lastTap: (id: String, time: Date)?
+    @State private var zoom: CGFloat = 1
+    @State private var pan: CGSize = .zero
+    @State private var lastZoom: CGFloat = 1
+    @State private var lastPan: CGSize = .zero
+    @State private var appeared = false
 
     private let padding: CGFloat = 38
 
@@ -22,6 +27,8 @@ struct CategoryMapView: View {
                     emptyState(graph)
                 } else if let graph {
                     canvas(graph, size: geometry.size)
+                        .opacity(appeared ? 1 : 0)
+                        .scaleEffect(appeared ? 1 : 0.985)
                     infoCard(graph)
                         .padding(16)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -36,6 +43,9 @@ struct CategoryMapView: View {
                 }
             }
             .background(Color(nsColor: .windowBackgroundColor))
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.45)) { appeared = true }
+            }
             .task { rebuildIfNeeded() }
             .onChange(of: model.library) { _, _ in rebuild() }
             .onChange(of: model.playlists) { _, _ in rebuild() }
@@ -65,21 +75,68 @@ struct CategoryMapView: View {
     private func canvas(_ graph: CategoryGraph, size: CGSize) -> some View {
         Canvas { context, canvasSize in
             let active = activeID
-            let hover = hoveredID
+            let focus = hoveredID ?? active
+            let neighbours: Set<String> = {
+                guard let focus else { return [] }
+                var result: Set<String> = [focus]
+                for edge in graph.edges where edge.a == focus || edge.b == focus {
+                    result.insert(edge.a)
+                    result.insert(edge.b)
+                }
+                return result
+            }()
+
+            // A warm vignette behind the graph; no assets involved.
+            context.fill(
+                Path(CGRect(origin: .zero, size: canvasSize)),
+                with: .radialGradient(
+                    Gradient(colors: [Theme.violet.opacity(0.07), .clear]),
+                    center: CGPoint(x: canvasSize.width * 0.62, y: canvasSize.height * 0.38),
+                    startRadius: 10,
+                    endRadius: max(canvasSize.width, canvasSize.height) * 0.72
+                )
+            )
+
+            context.translateBy(
+                x: canvasSize.width / 2 + pan.width,
+                y: canvasSize.height / 2 + pan.height
+            )
+            context.scaleBy(x: zoom, y: zoom)
+            context.translateBy(x: -canvasSize.width / 2, y: -canvasSize.height / 2)
 
             for edge in graph.edges {
                 guard let a = position(edge.a, in: canvasSize),
                       let b = position(edge.b, in: canvasSize)
                 else { continue }
+                let touchesFocus = focus == edge.a || focus == edge.b
+                let dimmed = focus != nil && !touchesFocus
+                let width = 0.7 + min(2.4, Double(edge.shared) * 0.45)
+
                 var path = Path()
                 path.move(to: a)
-                path.addLine(to: b)
-                let highlighted = hover == edge.a || hover == edge.b || active == edge.a || active == edge.b
-                context.stroke(
-                    path,
-                    with: .color(highlighted ? Theme.accent.opacity(0.65) : Color.secondary.opacity(0.32)),
-                    lineWidth: 0.7 + min(2.4, Double(edge.shared) * 0.45)
+                let dx = b.x - a.x
+                let dy = b.y - a.y
+                let distance = max(1, (dx * dx + dy * dy).squareRoot())
+                let bend = min(26, distance * 0.12) * bendSign(edge.id)
+                path.addQuadCurve(
+                    to: b,
+                    control: CGPoint(
+                        x: (a.x + b.x) / 2 - dy / distance * bend,
+                        y: (a.y + b.y) / 2 + dx / distance * bend
+                    )
                 )
+
+                let colour = touchesFocus ? Theme.accent : Color.secondary
+                let opacity = dimmed ? 0.05 : (touchesFocus ? 0.75 : 0.26)
+                // A wide translucent pass reads as a glow without a blur filter.
+                if !dimmed {
+                    context.stroke(
+                        path,
+                        with: .color(colour.opacity(touchesFocus ? 0.16 : 0.05)),
+                        lineWidth: width + 4
+                    )
+                }
+                context.stroke(path, with: .color(colour.opacity(opacity)), lineWidth: width)
             }
 
             let labelled = Set(
@@ -89,36 +146,57 @@ struct CategoryMapView: View {
             for node in graph.nodes {
                 guard let center = position(node.id, in: canvasSize) else { continue }
                 let isActive = node.id == active
-                let isHovered = node.id == hover
+                let isHovered = node.id == hoveredID
+                let isNeighbour = neighbours.contains(node.id)
+                let dimmed = focus != nil && !isNeighbour
+                let colour = groupColor(node.name)
                 let rect = CGRect(
                     x: center.x - node.radius,
                     y: center.y - node.radius,
                     width: node.radius * 2,
                     height: node.radius * 2
                 )
+
+                if !dimmed {
+                    let halo = rect.insetBy(dx: -4, dy: -4)
+                    context.fill(
+                        Path(ellipseIn: halo),
+                        with: .color((isActive || isHovered ? Theme.accent : colour).opacity(0.08))
+                    )
+                }
                 context.fill(
                     Path(ellipseIn: rect),
-                    with: .color(isActive || isHovered ? Theme.accent.opacity(0.38) : Theme.violet.opacity(0.20))
+                    with: .linearGradient(
+                        Gradient(colors: isActive || isHovered
+                            ? [Theme.accent.opacity(0.55), Theme.accent.opacity(0.18)]
+                            : [colour.opacity(dimmed ? 0.08 : 0.36), colour.opacity(dimmed ? 0.04 : 0.12)]),
+                        startPoint: CGPoint(x: rect.minX, y: rect.minY),
+                        endPoint: CGPoint(x: rect.maxX, y: rect.maxY)
+                    )
                 )
                 context.stroke(
                     Path(ellipseIn: rect),
-                    with: .color(isActive ? Theme.accent : Theme.violet.opacity(isHovered ? 0.95 : 0.55)),
+                    with: .color(
+                        isActive ? Theme.accent
+                            : colour.opacity(dimmed ? 0.18 : (isHovered ? 0.95 : 0.62))
+                    ),
                     lineWidth: isActive ? 2 : 1
                 )
-
             }
 
             // Labels after every circle; a pill keeps them legible over edges.
-            // Collisions are checked against other labels only, so the largest
-            // nodes are not left anonymous.
             var occupied: [CGRect] = []
             let labelNodes = graph.nodes
-                .filter { labelled.contains($0.id) || $0.id == hover || $0.id == active }
+                .filter {
+                    $0.id == hoveredID || $0.id == active
+                        || (focus == nil && labelled.contains($0.id))
+                        || neighbours.contains($0.id)
+                }
                 .sorted { $0.count > $1.count }
             for node in labelNodes {
                 guard let center = position(node.id, in: canvasSize) else { continue }
                 let isActive = node.id == active
-                let isHovered = node.id == hover
+                let isHovered = node.id == hoveredID
                 let text = Text(node.name)
                     .font(.system(size: 10, weight: isActive ? .semibold : .regular))
                     .foregroundColor(isActive ? Theme.accent : .secondary)
@@ -147,14 +225,15 @@ struct CategoryMapView: View {
         .onContinuousHover { phase in
             switch phase {
             case .active(let location):
-                hoveredID = node(at: location, in: graph, size: size)?.id
+                hoveredID = node(at: mapPoint(location, in: size), in: graph, size: size)?.id
             case .ended:
                 hoveredID = nil
             }
         }
         .gesture(
             SpatialTapGesture().onEnded { value in
-                guard let node = node(at: value.location, in: graph, size: size) else {
+                let location = mapPoint(value.location, in: size)
+                guard let node = node(at: location, in: graph, size: size) else {
                     lastTap = nil
                     return
                 }
@@ -170,6 +249,24 @@ struct CategoryMapView: View {
                     lastTap = (node.id, now)
                 }
             }
+        )
+        .simultaneousGesture(
+            MagnificationGesture()
+                .onChanged { value in
+                    zoom = min(2.6, max(0.55, lastZoom * value))
+                }
+                .onEnded { _ in lastZoom = zoom }
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12)
+                .onChanged { value in
+                    let limit = max(size.width, size.height) * 0.6
+                    pan = CGSize(
+                        width: min(limit, max(-limit, lastPan.width + value.translation.width)),
+                        height: min(limit, max(-limit, lastPan.height + value.translation.height))
+                    )
+                }
+                .onEnded { _ in lastPan = pan }
         )
         .contextMenu {
             if let node = hoveredNode(in: graph) {
@@ -229,6 +326,18 @@ struct CategoryMapView: View {
             Text(legendText(graph))
                 .font(.system(size: 9.5))
                 .foregroundStyle(.tertiary)
+            if zoom != 1 || pan != .zero {
+                Button("Reset view") {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        zoom = 1
+                        lastZoom = 1
+                        pan = .zero
+                        lastPan = .zero
+                    }
+                }
+                .buttonStyle(.link)
+                .font(.system(size: 10))
+            }
             if activeID != nil {
                 Button("Show videos") { model.presentation = .grid }
                     .buttonStyle(.link)
@@ -238,7 +347,7 @@ struct CategoryMapView: View {
     }
 
     private func legendText(_ graph: CategoryGraph) -> String {
-        var text = "\(graph.nodes.count) categories · size = videos · line = shared videos"
+        var text = "\(graph.nodes.count) categories · size = videos · colour = group · line = shared videos"
         if graph.hiddenCount > 0 {
             text += " · \(graph.hiddenCount) unlinked hidden"
         }
@@ -285,6 +394,31 @@ struct CategoryMapView: View {
             x: padding + CGFloat(point.x) * width,
             y: padding + CGFloat(point.y) * height
         )
+    }
+
+    /// Undo zoom/pan for hit-testing and hover.
+    private func mapPoint(_ location: CGPoint, in size: CGSize) -> CGPoint {
+        let centre = CGPoint(
+            x: size.width / 2 + pan.width,
+            y: size.height / 2 + pan.height
+        )
+        return CGPoint(
+            x: (location.x - centre.x) / zoom + size.width / 2,
+            y: (location.y - centre.y) / zoom + size.height / 2
+        )
+    }
+
+    /// Colour carries the category group, not an arbitrary per-node hue.
+    private func groupColor(_ name: String) -> Color {
+        let group = CategoryGraph.groupKey(name)
+        let palette: [Color] = [Theme.violet, Theme.accent, .blue, .teal, .green, .orange, .pink]
+        let sum = group.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return palette[sum % palette.count]
+    }
+
+    private func bendSign(_ id: String) -> CGFloat {
+        let sum = id.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return sum.isMultiple(of: 2) ? 1 : -1
     }
 
     private func node(

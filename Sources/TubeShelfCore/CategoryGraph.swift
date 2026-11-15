@@ -115,6 +115,13 @@ public struct CategoryGraph: Equatable, Sendable {
         self.hiddenCount = hidden.count
     }
 
+    /// Math subtopics group under Math; user categories group under "Other".
+    public static func groupKey(_ name: String) -> String {
+        let matched = TagNormalizer.taxonomyMatch(name) ?? name
+        if let parent = TagTaxonomy.parent(of: matched) { return parent }
+        return TagTaxonomy.isKnown(matched) ? matched : "Other"
+    }
+
     private static func strongestFirst(_ lhs: Edge, _ rhs: Edge) -> Bool {
         lhs.shared == rhs.shared ? lhs.id < rhs.id : lhs.shared > rhs.shared
     }
@@ -154,6 +161,23 @@ public struct CategoryGraph: Equatable, Sendable {
         let index = Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1.id, $0) })
         let repulsionK = k * k
         let attractionK = 1 / k
+
+        // Weak group gravity: subtopics sit near their parent category instead of
+        // drifting into an anonymous ring.
+        let groupKeys = Set(ordered.map { Self.groupKey($0.name) }).sorted()
+        var groupCentres: [String: MapPoint] = [:]
+        for (i, key) in groupKeys.enumerated() {
+            let count = max(1, groupKeys.count)
+            let angle = Double(i) / Double(count) * 2 * .pi
+            let radius = count == 1 ? 0 : 0.24
+            groupCentres[key] = MapPoint(
+                x: 0.5 + cos(angle) * radius,
+                y: 0.5 + sin(angle) * radius
+            )
+        }
+        let groupForID = Dictionary(uniqueKeysWithValues: ordered.map {
+            ($0.id, Self.groupKey($0.name))
+        })
 
         for iteration in 0..<max(1, iterations) {
             var displacement = [MapPoint](repeating: MapPoint(x: 0, y: 0), count: ordered.count)
@@ -203,6 +227,10 @@ public struct CategoryGraph: Equatable, Sendable {
             for (i, node) in ordered.enumerated() {
                 displacement[i].x += (0.5 - points[node.id]!.x) * 0.22
                 displacement[i].y += (0.5 - points[node.id]!.y) * 0.22
+                if let group = groupForID[node.id], let centre = groupCentres[group] {
+                    displacement[i].x += (centre.x - points[node.id]!.x) * 0.02
+                    displacement[i].y += (centre.y - points[node.id]!.y) * 0.02
+                }
                 let dx = displacement[i].x
                 let dy = displacement[i].y
                 let length = (dx * dx + dy * dy).squareRoot()

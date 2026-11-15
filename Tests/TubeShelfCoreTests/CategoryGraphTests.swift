@@ -85,6 +85,13 @@ final class CategoryGraphTests: XCTestCase {
         }
     }
 
+    func testGroupKeyUsesTheTaxonomyParent() {
+        XCTAssertEqual(CategoryGraph.groupKey("Trigonometry"), "Math")
+        XCTAssertEqual(CategoryGraph.groupKey("Calculus"), "Math")
+        XCTAssertEqual(CategoryGraph.groupKey("Cooking"), "Cooking")
+        XCTAssertEqual(CategoryGraph.groupKey("Explainer"), "Other")
+    }
+
     func testSeparationPushesLargeNodesApart() {
         let counts = ["A", "B", "C"].map { TagCount(name: $0, count: 100) }
         let graph = CategoryGraph(

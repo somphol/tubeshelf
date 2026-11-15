@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 149 unit tests
+swift test                                   # 150 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -219,13 +219,15 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   `pinnedChannels` live in `library.json` because they are user data worth backing
   up. Sort order and search scope are interface state in `UserDefaults`
   (`Preferences`), never in the library file.
-- **The map is a presentation, not a filter.** `ShelfPresentation` (`grid` /
-  `map`) lives in `UserDefaults`; Shelf is the default and ⌘1/⌘2 switch. The map
-  presents the same filter and never mutates the library. `CategoryGraph` in Core
-  owns nodes, shared-video edges, the four-link degree cap and hiding unlinked
-  categories; `separated()` resolves circle overlaps after the seeded force
-  layout. Click filters and stays, double-click opens the shelf. Edges are shared
-  videos only — never channels, durations or guesses.
+- **Three presentations: grid, map, orbit.** `ShelfPresentation` lives in
+  `UserDefaults`; Shelf is the default and ⌘1/⌘2/⌘3 switch. All three read the
+  same filter and never mutate the library. `CategoryGraph` in Core owns nodes,
+  shared-video edges, the four-link degree cap and hiding unlinked categories;
+  `separated()` resolves circle overlaps after the seeded force layout. The 2D
+  map is a Canvas with curved glowing edges, group colours and zoom/pan; the orbit
+  view is SceneKit spheres with left-drag orbit, right-drag pan, scroll/pinch zoom
+  and click-to-filter. Click filters and stays in 2D; double-click opens the shelf.
+  Edges are shared videos only — never channels, durations or guesses.
 - **Channel pins are names, not IDs.** `pinnedChannels` keeps YouTube's spelling and
   dedupes case-insensitively; a rename is a new pin. Pinned channels render in the
   same Pinned section as categories and are excluded from the Channels list, and
@@ -321,7 +323,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
   description lands in Unsorted rather than getting a loose tag.
 - Inline playback needs network access and a video that allows embedding.
 - The map shows shared-video links only. A library whose categories never share a
-  video has a map with no nodes; the view says so instead of drawing a ring.
+  video has no nodes; the view says so instead of drawing a ring.
+- The orbit view is a showpiece: depth occludes nodes and only the top eight carry
+  billboard labels. Window `cacheDisplay` cannot capture SceneKit, so 3D visual
+  checks use `TUBESHELF_ORBIT_SNAPSHOT=<path>` and `SCNView.snapshot()`.
 - Guest extraction only fires on the patterns above. An episode whose guest is
   named halfway down the description, or only in artwork, gets no name tag.
 - Scraping depends on YouTube's private page markup. For embed-disabled videos

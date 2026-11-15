@@ -101,22 +101,25 @@ struct DeckView: View {
         Color.clear
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
             .overlay {
-                Button {
-                    NSWorkspace.shared.open(video.watchURL)
-                } label: {
-                    ZStack {
-                        Circle().fill(.black.opacity(0.5))
-                            .frame(width: 62, height: 62)
-                        Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
-                            .frame(width: 62, height: 62)
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(.white)
-                            .offset(x: 2)
+                ThumbnailView(videoID: video.youtubeID, cornerRadius: 16)
+                    .overlay {
+                        Button {
+                            NSWorkspace.shared.open(video.watchURL)
+                        } label: {
+                            ZStack {
+                                Circle().fill(.black.opacity(0.5))
+                                    .frame(width: 62, height: 62)
+                                Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1)
+                                    .frame(width: 62, height: 62)
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .offset(x: 2)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help("Play on YouTube")
                     }
-                }
-                .buttonStyle(.plain)
-                .help("Play on YouTube")
             }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
@@ -150,6 +153,8 @@ struct DeckView: View {
                     Text(video.channel)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 .buttonStyle(.plain)
                 .help("Show every saved video from this channel")
@@ -158,12 +163,13 @@ struct DeckView: View {
                     Text(video.durationLabel)
                         .font(.system(size: 12).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.5))
+                        .fixedSize()
                 }
-                Text("·").foregroundStyle(.white.opacity(0.3))
-                Text("saved \(video.addedTimestamp())")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.5))
             }
+
+            Text("saved \(video.addedTimestamp())")
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.42))
 
             if video.tags.isEmpty {
                 Text("No category yet")
@@ -213,12 +219,13 @@ struct DeckView: View {
             }
             .padding(.top, 2)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Button {
                     model.editingVideoID = video.id
                 } label: {
                     Label("Edit", systemImage: "tag")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10.5))
+                        .lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white.opacity(0.6))
@@ -228,7 +235,8 @@ struct DeckView: View {
                 } label: {
                     Label(video.isFavorite ? "Favorited" : "Favorite",
                           systemImage: video.isFavorite ? "star.fill" : "star")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10.5))
+                        .lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(video.isFavorite ? .yellow : .white.opacity(0.6))
@@ -238,7 +246,8 @@ struct DeckView: View {
                 } label: {
                     Label(video.watchStatus == .done ? "Watched" : "Mark watched",
                           systemImage: video.watchStatus == .done ? "checkmark.circle.fill" : "checkmark.circle")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10.5))
+                        .lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(video.watchStatus == .done ? .green : .white.opacity(0.6))
@@ -248,11 +257,12 @@ struct DeckView: View {
                     NSPasteboard.general.setString(video.watchURL.absoluteString, forType: .string)
                     model.flash("Link copied")
                 } label: {
-                    Label("Copy link", systemImage: "link")
-                        .font(.system(size: 11))
+                    Label("Copy", systemImage: "link")
+                        .font(.system(size: 10.5))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white.opacity(0.6))
+                .help("Copy the YouTube link")
             }
             .padding(.top, 2)
 

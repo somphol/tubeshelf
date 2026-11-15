@@ -70,6 +70,29 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(library.video(youtubeID: "aaaaaaaaaaa")?.tags, ["Cooking"])
     }
 
+    func testCPlusPlusCategorySurvivesStorageAndFiltering() throws {
+        XCTAssertEqual(TagNormalizer.canonical("C++"), "C++")
+        XCTAssertEqual(TagNormalizer.canonical("c++"), "C++")
+        XCTAssertEqual(TagNormalizer.merge(["c++", "C++"]), ["C++"])
+
+        var library = Library()
+        library.add(Video(youtubeID: "aaaaaaaaaaa", title: "Modern C++", channel: "C", tags: ["C++"]))
+        XCTAssertEqual(library.tagCounts.map(\.name), ["C++"])
+        XCTAssertEqual(library.videos(filter: .tag("c++")).count, 1)
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cpp-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LibraryStore(directory: directory)
+        try store.save(library)
+        XCTAssertEqual(try store.load().tagCounts.map(\.name), ["C++"])
+    }
+
+    func testHeuristicStillFindsProgrammingFromCPlusPlus() {
+        let suggestion = HeuristicTagger().suggest(title: "Modern C++ concurrency in practice")
+        XCTAssertTrue(suggestion.tags.contains("Programming"), "got \(suggestion.tags)")
+    }
+
     func testPlaylistFilterIsAViewModeNotAVideoFilter() {
         var library = Library()
         library.add(makeVideo(id: "aaaaaaaaaaa", title: "A"))

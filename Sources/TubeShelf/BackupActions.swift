@@ -62,6 +62,72 @@ enum BackupActions {
         }
     }
 
+    // MARK: - Google Drive
+
+    /// Writes into the mounted Google Drive folder. No OAuth, no upload: Drive for
+    /// Desktop syncs the file like any other file.
+    static func backUpToDrive(_ model: AppModel) {
+        let drives = model.cloudLocator.googleDrives()
+        guard !drives.isEmpty else {
+            presentNoDrive(model)
+            return
+        }
+
+        guard let drive = chooseDrive(drives, model: model) else { return }
+
+        do {
+            let folder = try model.cloudLocator.backupFolder(in: drive)
+            let url = folder.appendingPathComponent(ShelfBackup.suggestedFileName())
+            try model.backup(to: url)
+            Preferences.driveAccountPath = drive.myDrive.path
+            model.flash("Backed up to Google Drive · \(drive.accountName)")
+        } catch {
+            model.flash("Drive backup failed: \(error.localizedDescription)")
+        }
+    }
+
+    private static func chooseDrive(_ drives: [CloudDrive], model: AppModel) -> CloudDrive? {
+        if drives.count == 1 { return drives[0] }
+        if let remembered = Preferences.driveAccountPath,
+           let match = drives.first(where: { $0.myDrive.path == remembered }) {
+            return match
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Which Google Drive account?"
+        alert.informativeText = "The backup goes into “TubeShelf Backups” in the account you pick."
+        alert.addButton(withTitle: "Back Up")
+        alert.addButton(withTitle: "Cancel")
+
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 320, height: 26))
+        popup.addItems(withTitles: drives.map(\.accountName))
+        alert.accessoryView = popup
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let index = popup.indexOfSelectedItem
+        return drives.indices.contains(index) ? drives[index] : drives[0]
+    }
+
+    private static func presentNoDrive(_ model: AppModel) {
+        let alert = NSAlert()
+        alert.messageText = "Google Drive for Desktop is not set up"
+        alert.informativeText = "Install Google Drive for Desktop and sign in. The app then sees a folder in ~/Library/CloudStorage and this button writes straight into My Drive — no account linking."
+        alert.addButton(withTitle: "Download Google Drive")
+        alert.addButton(withTitle: "Choose Folder…")
+        alert.addButton(withTitle: "Cancel")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            if let url = URL(string: "https://www.google.com/drive/download/") {
+                NSWorkspace.shared.open(url)
+            }
+        case .alertSecondButtonReturn:
+            backUp(model)
+        default:
+            break
+        }
+    }
+
     // MARK: - Profiles
 
     /// Adds a backup as its own profile, so a friend's list never touches yours.

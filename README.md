@@ -142,6 +142,13 @@ parking you on an empty shelf.
 
 ## Backup and restore
 
+**Google Drive:** *Back up to Drive* (**⌥⇧⌘S**, or the button in Settings) writes
+straight into `My Drive/TubeShelf Backups` as long as Google Drive for Desktop is
+installed and signed in. No OAuth, no upload API, no account linking — Drive syncs
+the file like any other. With several accounts you pick once and the choice is
+remembered. If Drive is not installed the button stays disabled and Settings links
+to the download.
+
 *Settings → Library → **Back up…*** (or **⇧⌘S**) writes one JSON file:
 videos, categories, notes and pins. Put it in a Google Drive, Dropbox or iCloud
 folder and it is a portable snapshot — not a live sync.

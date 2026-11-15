@@ -99,6 +99,11 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   because `Library` decodes unknown JSON into an *empty* shelf and that would let
   a stray file wipe data. Every restore writes a `library-before-restore-*` copy
   first; never remove that step.
+- **Drive support is a folder write, not an API.** `CloudDriveLocator` scans
+  `~/Library/CloudStorage/GoogleDrive-*/My Drive`; the button writes
+  `TubeShelf Backups/<timestamped>.json` there. No OAuth, no tokens, no network
+  code. Never invent a Drive path outside CloudStorage, and never fall back to a
+  silent local folder when the drive is missing.
 - **Backups exclude thumbnails on purpose.** They rebuild from YouTube, and
   including them would turn a 40 KB file into hundreds of megabytes.
 - **Duplicates are editable.** Opening a saved link prefills its tags and note and
@@ -149,6 +154,9 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   fallback has actually executed. Verify on a Mac with Apple Intelligence enabled
   using `swift run tubeshelf-check --probe` and expect `Apple Intelligence` as the
   source.
+- Google Drive for Desktop needs an admin install and an interactive sign-in, so
+  the Drive button is disabled until `My Drive` appears. That is intentional; the
+  Settings row links to the download.
 - Profiles are per-machine; there is no merge between two profiles.
 - `activeProfileID` lives in `UserDefaults` and is written even when the debug
   snapshot override (`TUBESHELF_LIBRARY_DIR`) points at a throwaway root. After

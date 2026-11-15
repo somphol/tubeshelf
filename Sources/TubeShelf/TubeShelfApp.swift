@@ -44,6 +44,11 @@ struct TubeShelfApp: App {
                 }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
 
+                Button("Back up to Google Drive") {
+                    BackupActions.backUpToDrive(model)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift, .option])
+
                 Button("Restore from Backup…") {
                     BackupActions.restore(model)
                 }
@@ -74,6 +79,29 @@ struct TubeShelfApp: App {
 struct SettingsView: View {
     let model: AppModel
     @State private var confirmReset = false
+
+    @ViewBuilder
+    private var driveStatusLine: some View {
+        switch model.driveStatus {
+        case .ready(let account):
+            Text("Google Drive · \(account) → TubeShelf Backups")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+        case .notFound:
+            HStack(spacing: 6) {
+                Text("Google Drive for Desktop not found.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                Button("Install it…") {
+                    if let url = URL(string: "https://www.google.com/drive/download/") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.link)
+                .font(.system(size: 10.5))
+            }
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -158,6 +186,12 @@ struct SettingsView: View {
                 HStack(spacing: 10) {
                     Button("Back up…") { BackupActions.backUp(model) }
                         .controlSize(.small)
+                    Button("Back up to Drive") { BackupActions.backUpToDrive(model) }
+                        .controlSize(.small)
+                        .disabled(model.driveStatus == .notFound)
+                        .help(model.driveStatus == .notFound
+                              ? "Install Google Drive for Desktop to enable this"
+                              : "Writes into My Drive → TubeShelf Backups")
                     Button("Restore…") { BackupActions.restore(model) }
                         .controlSize(.small)
                     Button("Reveal library file") {
@@ -172,6 +206,7 @@ struct SettingsView: View {
                         .disabled(model.library.isEmpty)
                     Spacer(minLength: 0)
                 }
+                driveStatusLine
                 Text("A backup is one JSON file: videos, categories, notes and pins. Thumbnails are re-downloaded, so the file stays small enough for Drive.")
                     .font(.system(size: 10.5))
                     .foregroundStyle(.tertiary)

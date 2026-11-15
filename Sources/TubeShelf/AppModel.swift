@@ -94,6 +94,34 @@ final class AppModel {
         profiles.first { $0.id == activeProfileID }
     }
 
+    /// Google Drive for Desktop mounts accounts under CloudStorage. The debug
+    /// snapshot mode can point at a fake root so this path can be exercised.
+    var cloudLocator: CloudDriveLocator {
+        #if DEBUG
+        if let root = SnapshotConfig.cloudRoot {
+            return CloudDriveLocator(root: root)
+        }
+        #endif
+        return CloudDriveLocator()
+    }
+
+    enum DriveStatus: Equatable {
+        case ready(account: String)
+        case notFound
+    }
+
+    var driveStatus: DriveStatus {
+        let drives = cloudLocator.googleDrives()
+        if let remembered = Preferences.driveAccountPath,
+           let match = drives.first(where: { $0.myDrive.path == remembered }) {
+            return .ready(account: match.accountName)
+        }
+        if let first = drives.first {
+            return .ready(account: first.accountName)
+        }
+        return .notFound
+    }
+
     // MARK: - Profiles
 
     func switchProfile(_ id: UUID) {
@@ -566,6 +594,17 @@ enum Preferences {
     }
 
     static let pageSizeOptions = [24, 48, 96, 144]
+
+    static var driveAccountPath: String? {
+        get { defaults.string(forKey: "driveAccountPath") }
+        set {
+            if let newValue {
+                defaults.set(newValue, forKey: "driveAccountPath")
+            } else {
+                defaults.removeObject(forKey: "driveAccountPath")
+            }
+        }
+    }
 
     static var activeProfileID: String? {
         get { defaults.string(forKey: "activeProfileID") }

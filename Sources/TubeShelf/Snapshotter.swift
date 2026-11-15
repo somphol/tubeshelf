@@ -128,6 +128,12 @@ enum SnapshotConfig {
         ProcessInfo.processInfo.environment["TUBESHELF_SNAPSHOT_APPEARANCE"]
     }
 
+    static var cloudRoot: URL? {
+        ProcessInfo.processInfo.environment["TUBESHELF_CLOUD_ROOT"].map {
+            URL(fileURLWithPath: $0, isDirectory: true)
+        }
+    }
+
     static var libraryDirectory: URL? {
         ProcessInfo.processInfo.environment["TUBESHELF_LIBRARY_DIR"].map {
             URL(fileURLWithPath: $0, isDirectory: true)

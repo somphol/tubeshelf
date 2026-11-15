@@ -349,12 +349,21 @@ before re-researching any of those questions.
   the Gatekeeper warning. Never commit library data, tokens or another person's
   shelf. The disclaimer lives in `DISCLAIMER.md`; keep it in sync with any change
   to distribution.
-- Read-only web viewer is **implemented** and live at
-  <https://somphol.github.io/tubeshelf-web-ro/>, from the **public** repo
-  <https://github.com/somphol/tubeshelf-web-ro>. It must only ever hold code and a
-  public demo; the backup format contract is in `PLAN.md` /
-  `format.schema.json` there. Update both when the envelope changes, and re-run
-  `node --test tests/` plus a 390 px Puppeteer pass.
+- Read-only web viewer is live at <https://somphol.github.io/tubeshelf-web-ro/>,
+  from the public repo <https://github.com/somphol/tubeshelf-web-ro>. It must only
+  ever hold code and a public demo; the backup format contract is in its
+  `PLAN.md` / `format.schema.json`. Update both when the envelope changes.
+- Editable web app (phase 1) is at
+  <https://somphol.github.io/tubeshelf-web-rw/>, from the public repo
+  <https://github.com/somphol/tubeshelf-web-rw>. It edits backups in the browser
+  and exports new timestamped files; Google Drive sync/autosave is planned.
+  **Cross-repo rule:** when `TagTaxonomy` changes, run
+  `python3 scripts/sync-taxonomy.py` in that repo and commit the generated
+  `taxonomy.json`/`taxonomy.js`. When the backup format changes, update the RW
+  `format.schema.json`, its tests, and the fixture
+  `Tests/TubeShelfCoreTests/Fixtures/web-export.json` here (the
+  `WebExportTests` case proves an export still decodes). Never add personal data
+  or tokens to either web repo.
 - Deployed copy for local use: `dist/TubeShelf.app` (created by
   `scripts/build-app.sh`, ignored by git).
 - Local library and thumbnails: `~/Library/Application Support/TubeShelf/` —

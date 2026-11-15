@@ -27,6 +27,7 @@ let package = Package(
         .testTarget(
             name: "TubeShelfCoreTests",
             dependencies: ["TubeShelfCore"],
+            exclude: ["Fixtures"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

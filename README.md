@@ -26,6 +26,16 @@ no installer, no background login item, and no account.
 **Free to use** under the [MIT License](LICENSE). No warranty and no liability;
 see [DISCLAIMER.md](DISCLAIMER.md). Keep your own backups.
 
+## Companion apps
+
+- **Read-only viewer:** <https://somphol.github.io/tubeshelf-web-ro/> — load a
+  backup and browse it; nothing is uploaded.
+- **Editable web app (phase 1):**
+  <https://somphol.github.io/tubeshelf-web-rw/> — load a backup, edit videos and
+  categories, add links, export a new backup. Google Drive sync is planned.
+  Source: <https://github.com/somphol/tubeshelf-web-rw>. The repo carries its own
+  handoff (`AGENTS.md`) and plan (`PLAN.md`).
+
 ## Requirements
 
 | | |

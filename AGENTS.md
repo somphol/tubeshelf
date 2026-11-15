@@ -176,6 +176,13 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 - Scraping depends on YouTube's private page markup; only description and
   duration are at risk, never the title or channel.
 
+## Deferred ideas
+
+`IDEAS.md` holds features that were planned but not scheduled. The watch-history
+importer is specced there, including the Takeout failure mode ("Service failed to
+retrieve this item") and why scraping/embedded login is not an option. Read it
+before re-researching any of those questions.
+
 ## Continuity
 
 - Repository: <https://github.com/somphol/tubeshelf> — **private**, no Pages, no

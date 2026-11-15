@@ -172,6 +172,10 @@ Three modules, one direction of dependency: `TubeShelfCheck → TubeShelfCore �
 
 - Repository: <https://github.com/somphol/tubeshelf> — **private**, no Pages, no
   public releases. Do not publish the app bundle or anyone's library data here.
+- Read-only web viewer lives in the **public** repo
+  <https://github.com/somphol/tubeshelf-web-ro>. It must only ever hold code and a
+  public demo; the backup format contract is in `PLAN.md` /
+  `format.schema.json` there. Update both when the envelope changes.
 - Deployed copy for local use: `dist/TubeShelf.app` (created by
   `scripts/build-app.sh`, ignored by git).
 - Local library and thumbnails: `~/Library/Application Support/TubeShelf/` —

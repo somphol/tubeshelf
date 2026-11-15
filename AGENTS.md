@@ -13,7 +13,7 @@ playlists, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 132 unit tests
+swift test                                   # 134 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -248,6 +248,10 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   show names, topics, acronyms and host names that overlap the channel, and never
   replaces or reorders a category. Do not make it aggressive: a wrong person tag is
   worse than a missing one.
+- **Format tags are evidence-only.** `FormatTagger` adds `Talks & Podcasts` for an
+  explicit "podcast" mention, a numbered episode (`#2501`) plus a guest, or two
+  promo markers in the opening description. It never fires on duration alone, so a
+  long tutorial with a named co-host stays a tutorial.
 - **Persisted JSON is tolerant**: new fields use `decodeIfPresent`, dates are
   truncated to whole seconds for exact round-trips, and a corrupt file is moved
   aside, never overwritten.

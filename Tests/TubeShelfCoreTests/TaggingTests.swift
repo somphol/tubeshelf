@@ -210,6 +210,49 @@ final class TaggingTests: XCTestCase {
         )
     }
 
+    func testPodcastFormatIsDetectedFromEpisodeEvidence() {
+        let tagger = FormatTagger()
+        // Numbered episode plus a named guest.
+        XCTAssertEqual(
+            tagger.tags(
+                title: "Joe Rogan Experience #2501 - Marc Andreessen",
+                channel: "PowerfulJRE",
+                description: "Marc Andreessen is a co-founder and general partner.",
+                guest: "Marc Andreessen"
+            ),
+            ["Talks & Podcasts"]
+        )
+        // Explicit self-description needs no guest.
+        XCTAssertEqual(
+            tagger.tags(title: "The future of agents", channel: "Lenny's Podcast"),
+            ["Talks & Podcasts"]
+        )
+        // A guest alone is not a format: a long tutorial is not a podcast.
+        XCTAssertEqual(
+            tagger.tags(
+                title: "Build a server with Sarah Drasner",
+                channel: "Conference",
+                description: "A practical walkthrough.",
+                guest: "Sarah Drasner"
+            ),
+            []
+        )
+        XCTAssertEqual(
+            tagger.tags(title: "Joe Rogan Experience #2501 - Marc Andreessen", guest: nil),
+            []
+        )
+    }
+
+    func testPodcastFormatIsAppendedForTheJREExample() async {
+        let suggestion = await TagEngine().suggest(
+            title: "Joe Rogan Experience #2501 - Marc Andreessen",
+            channel: "PowerfulJRE",
+            description: "Marc Andreessen is a co-founder and general partner at the venture capital firm Andreessen Horowitz."
+        )
+        XCTAssertTrue(suggestion.tags.contains("Talks & Podcasts"), "\(suggestion.tags)")
+        XCTAssertTrue(suggestion.tags.contains("Marc Andreessen"), "\(suggestion.tags)")
+    }
+
     func testGuestNameIsAppendedWithoutDisplacingCategories() async {
         let suggestion = await TagEngine().suggest(
             title: "Marc Andreessen: The real AI boom hasn’t even started yet",

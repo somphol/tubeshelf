@@ -60,16 +60,24 @@ public struct TagEngine: Sendable {
             knownCategories: knownCategories,
             limit: limit
         )
-        guard let guest = GuestNameExtractor().guest(
+        let guest = GuestNameExtractor().guest(
             title: title,
             channel: channel,
             description: description
-        ), !base.tags.contains(where: { $0.caseInsensitiveCompare(guest) == .orderedSame })
-        else { return base }
+        )
 
-        // A person is a tag, not a category: it is appended after the categories
-        // and never displaces one.
-        return TagSuggestion(tags: base.tags + [guest], source: base.source, note: base.note)
+        var extra = FormatTagger()
+            .tags(title: title, channel: channel, description: description, guest: guest)
+            .filter { extraTag in
+                !base.tags.contains { $0.caseInsensitiveCompare(extraTag) == .orderedSame }
+            }
+        if let guest, !base.tags.contains(where: { $0.caseInsensitiveCompare(guest) == .orderedSame }) {
+            // A person is a tag, not a category: it is appended after the
+            // categories and the format tag, and never displaces one.
+            extra.append(guest)
+        }
+        guard !extra.isEmpty else { return base }
+        return TagSuggestion(tags: base.tags + extra, source: base.source, note: base.note)
     }
 
     private func categorySuggestion(

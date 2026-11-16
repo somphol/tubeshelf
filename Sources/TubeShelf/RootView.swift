@@ -92,6 +92,9 @@ struct RootView: View {
         .sheet(isPresented: $model.isAddPlaylistToCatalogPresented) {
             AddPlaylistToCatalogSheet(model: model)
         }
+        .sheet(item: $model.mergeReview) { review in
+            MergeReviewView(model: model, review: review)
+        }
         .sheet(isPresented: Binding(
             get: { model.editingVideoID != nil },
             set: { if !$0 { model.editingVideoID = nil } }

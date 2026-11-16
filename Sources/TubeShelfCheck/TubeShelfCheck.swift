@@ -46,6 +46,8 @@ struct TubeShelfCheck {
                 let playlists = (try? PlaylistStore(directory: store.directory).load()) ?? []
                 let url = URL(fileURLWithPath: arguments[index + 1])
                 try BackupService().write(library, playlists: playlists, to: url)
+                try? MergeBaseStore(directory: store.directory)
+                    .save(ShelfSnapshot(library: library, playlists: playlists))
                 print("Backed up \(library.count) videos and \(playlists.count) playlists → \(url.path)")
                 return
             }
@@ -68,6 +70,8 @@ struct TubeShelfCheck {
                 }
                 try store.save(contents.library)
                 try playlistStore.save(contents.playlists)
+                try? MergeBaseStore(directory: store.directory)
+                    .save(ShelfSnapshot(library: contents.library, playlists: contents.playlists))
                 print("Restored \(contents.library.count) videos and \(contents.playlists.count) playlists ← \(url.path)")
                 return
             }

@@ -274,6 +274,57 @@ enum Snapshotter {
                 if let top = model.library.channelCounts().first {
                     model.showChannel(top.name)
                 }
+            case "merge":
+                var baseVideo = Video(
+                    youtubeID: "merge000001",
+                    title: "Linear algebra, chapter one",
+                    channel: "3Blue1Brown",
+                    tags: ["Math"],
+                    note: "Old note",
+                    durationSeconds: 600
+                )
+                var mineVideo = baseVideo
+                mineVideo.note = "Saved on the Mac"
+                mineVideo.tags = ["Math", "Linear Algebra"]
+                var webVideo = baseVideo
+                webVideo.note = "Saved on the web"
+                webVideo.tags = ["Math", "Calculus"]
+                let removedHere = Video(
+                    youtubeID: "merge000002",
+                    title: "Sourdough starter",
+                    channel: "Bake Club",
+                    tags: ["Cooking"],
+                    note: "Edited on the Mac"
+                )
+                var baseRemoved = removedHere
+                baseRemoved.note = "Old note"
+                let baseShelf = ShelfSnapshot(
+                    library: Library(videos: [baseVideo, baseRemoved], pinnedTags: ["Math", "Cooking"]),
+                    playlists: []
+                )
+                let mineShelf = ShelfSnapshot(
+                    library: Library(videos: [mineVideo, removedHere], pinnedTags: ["Math", "Cooking"]),
+                    playlists: []
+                )
+                let webShelf = ShelfSnapshot(
+                    library: Library(
+                        videos: [webVideo, Video(
+                            youtubeID: "merge000003",
+                            title: "Vectors, chapter two",
+                            channel: "3Blue1Brown",
+                            tags: ["Math"],
+                            durationSeconds: 540
+                        )],
+                        pinnedTags: ["Math", "Calculus"]
+                    ),
+                    playlists: []
+                )
+                let mergeResult = ShelfMerger.merge(base: baseShelf, mine: mineShelf, theirs: webShelf)
+                model.mergeReview = MergeReviewState(
+                    result: mergeResult,
+                    incoming: webShelf,
+                    name: "TubeShelf 2026-11-15 10.00.00-web.json"
+                )
             case "edit":
                 model.editingVideoID = model.visibleVideos.first?.id
             case "page2":

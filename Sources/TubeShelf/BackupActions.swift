@@ -43,24 +43,131 @@ enum BackupActions {
             model.flash("Restore failed: \(error.localizedDescription)")
             return
         }
-        let incoming = contents.library
 
+        let incoming = ShelfSnapshot(library: contents.library, playlists: contents.playlists)
+        let name = url.lastPathComponent
+        let mine = model.snapshot
+
+        // A backup with no videos must never silently delete a populated
+        // profile through a merge. Replacing is still available, with its own
+        // warning.
+        if incoming.library.videos.isEmpty,
+           !mine.library.videos.isEmpty {
+            presentEmptyBackupWarning(model, incoming: incoming, name: name)
+            return
+        }
+
+        guard let base = model.mergeBase else {
+            presentReplace(
+                model,
+                incoming: incoming,
+                name: name,
+                note: "A merge needs a backup taken before your latest edits. Back up this profile first to enable merging."
+            )
+            return
+        }
+
+        if mine == base {
+            presentReplace(
+                model,
+                incoming: incoming,
+                name: name,
+                note: "There are no local edits since the last backup, so this replaces the profile."
+            )
+            return
+        }
+
+        let result = ShelfMerger.merge(base: base, mine: mine, theirs: incoming)
+        if result.stats.changes == 0, result.conflicts.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "Already up to date"
+            alert.informativeText = "That backup has nothing this profile does not already have."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        if result.conflicts.isEmpty {
+            presentMergeChoice(model, incoming: incoming, result: result, name: name)
+        } else {
+            model.mergeReview = MergeReviewState(result: result, incoming: incoming, name: name)
+        }
+    }
+
+    private static func presentReplace(
+        _ model: AppModel,
+        incoming: ShelfSnapshot,
+        name: String,
+        note: String
+    ) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Restore \(incoming.count) video\(incoming.count == 1 ? "" : "s") and \(contents.playlists.count) playlist\(contents.playlists.count == 1 ? "" : "s")?"
+        alert.messageText = "Replace this profile with the backup?"
         alert.informativeText = """
-        This replaces the current profile (“\(model.currentProfile?.name ?? "shelf")”, \(model.library.count) videos, \(model.playlists.count) playlists).
+        “\(name)” has \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s") and \(incoming.playlists.count) playlist\(incoming.playlists.count == 1 ? "" : "s").
+        This profile (“\(model.currentProfile?.name ?? "shelf")”) has \(model.library.count) videos and \(model.playlists.count) playlists.
+        \(note)
         The current library and catalog are copied aside in Application Support before anything changes.
         """
-        alert.addButton(withTitle: "Restore")
+        alert.addButton(withTitle: "Replace")
         alert.addButton(withTitle: "Cancel")
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        do {
-            try model.restore(from: url)
-        } catch {
-            model.flash("Restore failed: \(error.localizedDescription)")
+        model.replace(with: incoming, name: name)
+    }
+
+    private static func presentMergeChoice(
+        _ model: AppModel,
+        incoming: ShelfSnapshot,
+        result: ShelfMergeResult,
+        name: String
+    ) {
+        let alert = NSAlert()
+        alert.messageText = "Merge \(result.stats.changes) backup change\(result.stats.changes == 1 ? "" : "s")?"
+        alert.informativeText = """
+        “\(name)” has \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s") and \(incoming.playlists.count) playlist\(incoming.playlists.count == 1 ? "" : "s").
+        \(mergeStatsLine(result.stats))
+        The current profile stays; the backup is merged into it. You can undo the merge.
+        """
+        alert.addButton(withTitle: "Merge")
+        alert.addButton(withTitle: "Replace")
+        alert.addButton(withTitle: "Cancel")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            model.applyMerge(result.snapshot, name: name)
+        case .alertSecondButtonReturn:
+            model.replace(with: incoming, name: name)
+        default:
+            break
         }
+    }
+
+    private static func presentEmptyBackupWarning(
+        _ model: AppModel,
+        incoming: ShelfSnapshot,
+        name: String
+    ) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "That backup has no videos"
+        alert.informativeText = """
+        “\(name)” has no videos\(incoming.playlists.isEmpty ? " and no playlists" : ""). Merging could remove this profile's videos.
+        Replace the profile instead?
+        """
+        alert.addButton(withTitle: "Replace")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        model.replace(with: incoming, name: name)
+    }
+
+    private static func mergeStatsLine(_ stats: MergeStats) -> String {
+        var parts: [String] = []
+        if stats.added > 0 { parts.append("\(stats.added) added") }
+        if stats.updated > 0 { parts.append("\(stats.updated) updated") }
+        if stats.deleted > 0 { parts.append("\(stats.deleted) removed") }
+        if stats.kept > 0 { parts.append("\(stats.kept) kept locally") }
+        return parts.isEmpty ? "No field changes." : parts.joined(separator: "  ·  ")
     }
 
     // MARK: - Google Drive

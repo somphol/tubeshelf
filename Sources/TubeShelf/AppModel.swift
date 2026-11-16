@@ -52,6 +52,10 @@ enum ShelfItem: Identifiable {
 @Observable
 final class AppModel {
     var library: Library
+    /// The last state shared with the web: a successful backup or restore.
+    var mergeBase: ShelfSnapshot?
+    /// Set when a restore has conflicts and the review sheet should open.
+    var mergeReview: MergeReviewState?
     var filter: ShelfFilter = .all
     var query: String = "" {
         didSet {
@@ -230,6 +234,7 @@ final class AppModel {
                 self.toast = "Could not read \(active.name): \(error.localizedDescription)"
             }
             self.playlists = (try? self.playlistStore.load()) ?? []
+            self.mergeBase = MergeBaseStore(directory: activeDirectory).load()
             scheduleSpotlight()
             self.library.retainPins(among: Set(
                 (self.library.tagCounts.map(\.name) + self.playlists.flatMap(\.tags)).map { $0.lowercased() }
@@ -291,6 +296,7 @@ final class AppModel {
             library = Library()
             toast = "Could not read \(profile.name): \(error.localizedDescription)"
         }
+        mergeBase = MergeBaseStore(directory: profileStore.directory(for: profile)).load()
 
         filter = .all
         query = ""
@@ -324,6 +330,9 @@ final class AppModel {
         }
         profiles = (try? profileStore.profiles()) ?? (profiles + [profile])
         switchProfile(profile.id)
+        let base = ShelfSnapshot(library: incoming, playlists: incomingPlaylists)
+        mergeBase = base
+        try? MergeBaseStore(directory: profileStore.directory(for: profile)).save(base)
         return profile
     }
 
@@ -1228,17 +1237,74 @@ final class AppModel {
     @discardableResult
     func backup(to url: URL) throws -> Int {
         try BackupService().write(library, playlists: playlists, to: url)
+        let snapshot = ShelfSnapshot(library: library, playlists: playlists)
+        mergeBase = snapshot
+        try? MergeBaseStore(directory: store.directory).save(snapshot)
         flash("Backed up \(library.count) video\(library.count == 1 ? "" : "s")")
         return library.count
+    }
+
+    /// The current profile as a merge input.
+    var snapshot: ShelfSnapshot {
+        ShelfSnapshot(library: library, playlists: playlists)
     }
 
     @discardableResult
     func restore(from url: URL) throws -> Int {
         let contents = try BackupService().readContents(from: url)
-        let incoming = contents.library
+        replace(
+            with: ShelfSnapshot(library: contents.library, playlists: contents.playlists),
+            name: url.lastPathComponent
+        )
+        return contents.library.count
+    }
 
-        // Keep the outgoing library beside the store so choosing the wrong file
-        // is always recoverable.
+    /// Replace the profile with a backup. The outgoing library and catalog are
+    /// copied aside so a wrong file is always recoverable.
+    func replace(with incoming: ShelfSnapshot, name: String) {
+        writeAside()
+
+        library = incoming.library
+        playlists = incoming.playlists
+        savePlaylists()
+        filter = .all
+        query = ""
+        sidebarQuery = ""
+        pageIndex = 0
+        deck = nil
+        editingVideoID = nil
+        isAddPresented = false
+        resetSelection()
+        save()
+
+        mergeBase = incoming
+        try? MergeBaseStore(directory: store.directory).save(incoming)
+        flash("Restored \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s")")
+    }
+
+    /// Apply a reviewed merge as one step. The merge base stays where it was:
+    /// the incoming file is not an ancestor of the merged shelf.
+    func applyMerge(_ merged: ShelfSnapshot, name: String) {
+        let before = snapshot
+        library = merged.library
+        playlists = merged.playlists
+        savePlaylists()
+        deck = nil
+        editingVideoID = nil
+        isAddPresented = false
+        resetSelection()
+        save()
+        flash("Merged \(name)", actionTitle: "Undo") { [weak self] in
+            guard let self else { return }
+            self.library = before.library
+            self.playlists = before.playlists
+            self.savePlaylists()
+            self.save()
+            self.flash("Merge undone")
+        }
+    }
+
+    private func writeAside() {
         let stamp = Int(Date().timeIntervalSince1970)
         if let data = try? Data(contentsOf: store.fileURL) {
             let aside = store.directory.appendingPathComponent("library-before-restore-\(stamp).json")
@@ -1249,18 +1315,6 @@ final class AppModel {
             let aside = store.directory.appendingPathComponent("playlists-before-restore-\(stamp).json")
             try? playlistsData.write(to: aside, options: .atomic)
         }
-
-        library = incoming
-        playlists = contents.playlists
-        savePlaylists()
-        filter = .all
-        query = ""
-        sidebarQuery = ""
-        pageIndex = 0
-        deck = nil
-        save()
-        flash("Restored \(incoming.count) video\(incoming.count == 1 ? "" : "s")")
-        return incoming.count
     }
 
     // MARK: - Persistence

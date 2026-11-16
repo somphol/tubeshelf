@@ -13,7 +13,7 @@ It is not a YouTube client: no login, no feed, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 151 unit tests
+swift test                                   # 163 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -46,6 +46,9 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   singleton).
 - **DeckView** is an overlay in `RootView`, not a separate window, so it animates
   over the shelf and keeps one window. The window toolbar hides while it is open.
+- **ShelfMerger** (`TubeShelfCore`) is the pure three-way merge. `MergeBaseStore`
+  keeps `merge-base.json` per profile. `MergeReviewView` is the SwiftUI sheet for
+  conflicts; `BackupActions.restore` chooses merge, review or replace.
 - Saving happens synchronously after every mutation (`AppModel.save()`); the
   library is small enough that this is cheaper than a debounce.
 
@@ -196,12 +199,26 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   `playlists` array; `BackupService.readContents` returns both; profile import
   writes the new profile's `playlists.json`; restore copies both files aside.
   When adding an export path, include the catalog or the feature is half-exported.
-- **Backups are a versioned envelope, restores are replace-only.** The backup
+- **Backups are a versioned envelope; restores merge by default.** The backup
   carries `format` and `version`; a newer version is refused with a clear reason.
   Raw `library.json` is accepted only when a top-level `videos` array exists,
   because `Library` decodes unknown JSON into an *empty* shelf and that would let
-  a stray file wipe data. Every restore writes a `library-before-restore-*` copy
-  first; never remove that step.
+  a stray file wipe data. `merge-base.json` is written after every successful
+  backup and after a replace; ordinary edits never move it. A restore with a base
+  runs `ShelfMerger`, applies one-sided changes, and opens
+  `MergeReviewView` only for conflicts. **Replace** stays explicit. Every merge
+  or replace writes `library-before-restore-*` and
+  `playlists-before-restore-*` copies first; never remove that step.
+- **A merge is one Undo step.** `AppModel.applyMerge` snapshots the library and
+  catalog, saves the merged shelf, and offers Undo in the toast. The merge base
+  is not moved by a merge: the incoming file is not an ancestor of the merged
+  shelf. Title, channel and duration are metadata: take the backup when the Mac
+  did not change them; an empty duration fills from the backup.
+- **No base means no automatic merge.** After a profile has never been backed up,
+  restore keeps the replace confirmation and says why. Do not silently treat the
+  current shelf as the base: that would discard local edits. A backup with no
+  videos is never merged into a populated profile; it offers Replace only, even
+  if it carries courses.
 - **Drive support is a folder write, not an API.** `CloudDriveLocator` scans
   `~/Library/CloudStorage/GoogleDrive-*/My Drive`; the button writes
   `TubeShelf Backups/<timestamped>.json` there. No OAuth, no tokens, no network
@@ -314,6 +331,12 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   the Drive button is disabled until `My Drive` appears. That is intentional; the
   Settings row links to the download.
 - Profiles are per-machine; there is no merge between two profiles.
+- Course/playlist conflicts are whole-record; chapters are not merged field by
+  field. A backup with no catalog is treated as "no playlist information", never
+  as "delete every course".
+- The merge review is a SwiftUI sheet on the main window. Restoring from the
+  Settings window still presents it on the main window; there is no separate
+  merge window.
 - `activeProfileID` lives in `UserDefaults` and is written even when the debug
   snapshot override (`TUBESHELF_LIBRARY_DIR`) points at a throwaway root. After
   such a run, reset it or the real app opens on a demo profile. Moving a

@@ -299,11 +299,20 @@ original value is never rewritten by an import.
 videos, categories, notes and pins. Put it in a Google Drive, Dropbox or iCloud
 folder and it is a portable snapshot — not a live sync.
 
-*Restore…* reads that file back, shows how many videos are in it, and replaces the
-**current profile** only after you confirm. To keep both shelves instead, use
-*Profiles → Add from Backup…*, which creates a new profile and leaves yours alone. Before anything changes, the outgoing library is
-copied to `library-before-restore-<timestamp>.json` next to your library file, so a
-wrong choice is always recoverable.
+*Restore…* reads that file back and merges it into the **current profile**. A
+three-way merge compares the backup, your Mac, and the last state you backed up:
+one-sided changes apply automatically; only fields changed on both sides ask. The
+review sheet shows This Mac / Backup / Both for every conflict, and the merge is
+one **Undo** step in the toast. If you have not backed up since editing, there is
+no common ancestor; the app falls back to the replace confirmation. A backup with
+no videos is never merged into a populated profile. **Replace** is always offered
+explicitly.
+
+To keep both shelves instead, use *Profiles → Add from Backup…*, which creates a
+new profile and leaves yours alone. Before anything changes, the outgoing library
+and catalog are copied to `library-before-restore-<timestamp>.json` and
+`playlists-before-restore-<timestamp>.json` next to your library file, so a wrong
+choice is always recoverable.
 
 The file is a versioned envelope (`format: tubeshelf.backup`, `version: 1`), and a
 plain `library.json` is also accepted for people who back up by hand — but only if
@@ -321,7 +330,9 @@ swift run tubeshelf-check --restore ~/Desktop/shelf.json
 ├── Profiles/
 │   └── <uuid>/
 │       ├── profile.json  # name, created date, import source
-│       └── library.json  # that profile's videos, tags and pins
+│       ├── library.json  # that profile's videos, tags and pins
+│       ├── playlists.json # optional course catalog
+│       └── merge-base.json # last state shared with the web (backup/restore)
 ├── Thumbnails/           # shared artwork cache, safe to delete
 └── library.json          # pre-profile file, kept as a backup after migration
 ```
@@ -332,7 +343,7 @@ aside as `library-corrupt-<timestamp>.json` instead of being overwritten.
 ## Verification
 
 ```bash
-swift test                          # 74 unit tests: links, tagging, shelf, deck, disk, profiles
+swift test                          # 163 unit tests: links, tagging, shelf, deck, merge, disk, profiles
 swift run tubeshelf-check           # headless checks against the same logic
 swift run tubeshelf-check --probe   # model status + live suggestions
 swift run tubeshelf-check --fetch <link>   # metadata + suggestion for one video

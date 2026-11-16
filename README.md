@@ -26,7 +26,7 @@ no installer, no background login item, and no account.
 **Free to use** under the [MIT License](LICENSE). No warranty and no liability;
 see [DISCLAIMER.md](DISCLAIMER.md). Keep your own backups.
 
-## Companion apps
+## Companion app
 
 - **Web app:** <https://somphol.github.io/tubeshelf-web/> — load a backup, edit
   videos and categories, add links, present a slide deck, export a new backup,

@@ -127,12 +127,17 @@ public struct ShelfBackup {
         }
     }
 
-    /// `TubeShelf 2026-11-14 15.42.07 PST.json`
+    /// `TubeShelf My Shelf 2026-11-14 15.42.07 PST.json`
     ///
-    /// Date, time to the second, and the zone, because two backups on the same
-    /// day are otherwise indistinguishable once they are sitting in Drive. No
-    /// colon or slash: both are hostile in filenames and in sync folders.
-    public static func suggestedFileName(for date: Date = Date(), timeZone: TimeZone = .current) -> String {
+    /// The profile name keeps two shelves from looking identical once they sit
+    /// side by side in Drive. Date, time to the second, and the zone because two
+    /// backups on the same day are otherwise indistinguishable. No colon or
+    /// slash: both are hostile in filenames and in sync folders.
+    public static func suggestedFileName(
+        for date: Date = Date(),
+        timeZone: TimeZone = .current,
+        profileName: String? = nil
+    ) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
@@ -144,7 +149,41 @@ public struct ShelfBackup {
             .replacingOccurrences(of: ":", with: "-")
             .replacingOccurrences(of: "/", with: "-")
 
-        return "TubeShelf \(stamp) \(safeZone).json"
+        let profile = sanitizedProfileName(profileName)
+        let prefix = profile.isEmpty ? "TubeShelf " : "TubeShelf \(profile) "
+        return "\(prefix)\(stamp) \(safeZone).json"
+    }
+
+    /// Filenames are shared with Google Drive, Dropbox and Windows machines.
+    /// Keep letters, numbers and spaces; replace path-hostile punctuation.
+    public static func sanitizedProfileName(_ raw: String?) -> String {
+        guard let raw else { return "" }
+        let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)
+        var cleaned = raw.components(separatedBy: forbidden).joined(separator: " - ")
+        cleaned = cleaned.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: " -"))
+        return String(cleaned.prefix(60)).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Read the profile back out of a backup filename. Returns nil for the older
+    /// `TubeShelf <timestamp> <zone>.json` shape, so callers can fall back.
+    public static func profileName(fromFileName name: String) -> String? {
+        var stem = name
+        if stem.lowercased().hasSuffix(".json") {
+            stem = String(stem.dropLast(5))
+        }
+        if stem.hasSuffix("-web") {
+            stem = String(stem.dropLast(4))
+        }
+        let pattern = #"^TubeShelf (.*?) \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}(?: \S+)?$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(stem.startIndex..<stem.endIndex, in: stem)
+        guard let match = regex.firstMatch(in: stem, range: range),
+              let profileRange = Range(match.range(at: 1), in: stem)
+        else { return nil }
+        let profile = String(stem[profileRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return profile.isEmpty ? nil : profile
     }
 
     private static func gmtOffsetName(for timeZone: TimeZone, date: Date) -> String {

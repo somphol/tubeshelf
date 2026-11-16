@@ -13,7 +13,9 @@ enum BackupActions {
         let panel = NSSavePanel()
         panel.title = "Back up \(model.currentProfile?.name ?? "your shelf")"
         panel.prompt = "Back up"
-        panel.nameFieldStringValue = ShelfBackup.suggestedFileName()
+        panel.nameFieldStringValue = ShelfBackup.suggestedFileName(
+            profileName: model.currentProfile?.name
+        )
         panel.allowedContentTypes = [.json]
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
@@ -185,7 +187,9 @@ enum BackupActions {
 
         do {
             let folder = try model.cloudLocator.backupFolder(in: drive)
-            let url = folder.appendingPathComponent(ShelfBackup.suggestedFileName())
+            let url = folder.appendingPathComponent(
+                ShelfBackup.suggestedFileName(profileName: model.currentProfile?.name)
+            )
             try model.backup(to: url)
             Preferences.driveAccountPath = drive.myDrive.path
             model.flash("Backed up to Google Drive · \(drive.accountName)")
@@ -325,10 +329,15 @@ enum BackupActions {
     }
 
     private static func defaultProfileName(from url: URL) -> String {
+        if let parsed = ShelfBackup.profileName(fromFileName: url.lastPathComponent) {
+            return parsed
+        }
         var stem = url.deletingPathExtension().lastPathComponent
         if stem.hasPrefix("TubeShelf ") {
             stem.removeFirst("TubeShelf ".count)
         }
+        let timestamp = #"\s*\d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2} \S+$"#
+        stem = stem.replacingOccurrences(of: timestamp, with: "", options: .regularExpression)
         stem = stem.trimmingCharacters(in: .whitespacesAndNewlines)
         return stem.isEmpty ? "Imported Shelf" : stem
     }

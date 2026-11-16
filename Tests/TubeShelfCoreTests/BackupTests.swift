@@ -112,6 +112,45 @@ final class BackupTests: XCTestCase {
         XCTAssertTrue(name.hasSuffix(".json"))
     }
 
+    func testSuggestedFileNameCarriesAndSanitizesProfileName() {
+        let zone = TimeZone(identifier: "Asia/Bangkok")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let date = calendar.date(from: DateComponents(
+            year: 2026, month: 11, day: 14, hour: 15, minute: 42, second: 7
+        ))!
+        let label = (zone.abbreviation(for: date) ?? "GMT+7")
+            .replacingOccurrences(of: ":", with: "-")
+
+        let name = ShelfBackup.suggestedFileName(
+            for: date,
+            timeZone: zone,
+            profileName: "Work / Study: 2026"
+        )
+        XCTAssertEqual(name, "TubeShelf Work - Study - 2026 2026-11-14 15.42.07 \(label).json")
+        XCTAssertEqual(ShelfBackup.profileName(fromFileName: name), "Work - Study - 2026")
+    }
+
+    func testProfileNameParsesNewAndOldFileNames() {
+        let new = "TubeShelf My Shelf 2026-11-14 15.42.07 PST.json"
+        let web = "TubeShelf My Shelf 2026-11-14 15.42.07 PST-web.json"
+        let webNoZone = "TubeShelf My Shelf 2026-11-14 15.42.07-web.json"
+        let old = "TubeShelf 2026-11-14 15.42.07 PST.json"
+        let oldWeb = "TubeShelf 2026-11-14 15.42.07-web.json"
+        XCTAssertEqual(ShelfBackup.profileName(fromFileName: new), "My Shelf")
+        XCTAssertEqual(ShelfBackup.profileName(fromFileName: web), "My Shelf")
+        XCTAssertEqual(ShelfBackup.profileName(fromFileName: webNoZone), "My Shelf")
+        XCTAssertNil(ShelfBackup.profileName(fromFileName: old))
+        XCTAssertNil(ShelfBackup.profileName(fromFileName: oldWeb))
+        XCTAssertNil(ShelfBackup.profileName(fromFileName: "demo-shelf.json"))
+    }
+
+    func testSanitizedProfileNameDropsPathHostileCharacters() {
+        XCTAssertEqual(ShelfBackup.sanitizedProfileName("A/B:C*?\"<>|"), "A - B - C")
+        XCTAssertEqual(ShelfBackup.sanitizedProfileName("   "), "")
+        XCTAssertEqual(ShelfBackup.sanitizedProfileName(nil), "")
+    }
+
     func testSuggestedFileNameIsSafeForSyncFolders() {
         // Half-hour zones produce an abbreviation like "GMT+5:30"; the colon must
         // not survive into a filename that a sync client has to handle.

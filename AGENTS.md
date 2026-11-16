@@ -13,7 +13,7 @@ It is not a YouTube client: no login, no feed, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 163 unit tests
+swift test                                   # 166 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -199,6 +199,11 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   `playlists` array; `BackupService.readContents` returns both; profile import
   writes the new profile's `playlists.json`; restore copies both files aside.
   When adding an export path, include the catalog or the feature is half-exported.
+- **Backup filenames carry the profile.** `ShelfBackup.suggestedFileName` prefixes
+  `TubeShelf <profile> `, sanitised for `/ \ : * ? " < > |` and capped at 60
+  characters. `ShelfBackup.profileName(fromFileName:)` reads it back for profile
+  import and accepts the older timestamp-only name by returning nil. Do not put
+  the profile in the JSON envelope; the filename is the only place it belongs.
 - **Backups are a versioned envelope; restores merge by default.** The backup
   carries `format` and `version`; a newer version is refused with a clear reason.
   Raw `library.json` is accepted only when a top-level `videos` array exists,

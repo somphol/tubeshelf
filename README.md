@@ -296,7 +296,9 @@ instant, a backup restored in another timezone still reads correctly, and the
 original value is never rewritten by an import.
 
 *Settings → Library → **Back up…*** (or **⇧⌘S**) writes one JSON file:
-videos, categories, notes and pins. Put it in a Google Drive, Dropbox or iCloud
+videos, categories, notes and pins. The suggested name carries the profile, e.g.
+`TubeShelf My Shelf 2026-11-14 15.42.07 PST.json`, so several shelves do not look
+identical in the same Drive folder. Put it in a Google Drive, Dropbox or iCloud
 folder and it is a portable snapshot — not a live sync.
 
 *Restore…* reads that file back and merges it into the **current profile**. A
@@ -343,7 +345,7 @@ aside as `library-corrupt-<timestamp>.json` instead of being overwritten.
 ## Verification
 
 ```bash
-swift test                          # 163 unit tests: links, tagging, shelf, deck, merge, disk, profiles
+swift test                          # 166 unit tests: links, tagging, shelf, deck, merge, disk, profiles
 swift run tubeshelf-check           # headless checks against the same logic
 swift run tubeshelf-check --probe   # model status + live suggestions
 swift run tubeshelf-check --fetch <link>   # metadata + suggestion for one video

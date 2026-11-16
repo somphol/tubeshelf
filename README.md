@@ -28,14 +28,11 @@ see [DISCLAIMER.md](DISCLAIMER.md). Keep your own backups.
 
 ## Companion apps
 
-- **Read-only viewer:** <https://somphol.github.io/tubeshelf-web-ro/> — load a
-  backup and browse it; nothing is uploaded.
-- **Editable web app:**
-  <https://somphol.github.io/tubeshelf-web-rw/> — load a backup, edit videos and
-  categories, add links, export a new backup, and optionally open/save through
-  Google Drive with hourly autosave and local snapshot fallback.
-  Source: <https://github.com/somphol/tubeshelf-web-rw>. The repo carries its own
-  handoff (`AGENTS.md`) and plan (`PLAN.md`).
+- **Web app:** <https://somphol.github.io/tubeshelf-web/> — load a backup, edit
+  videos and categories, add links, present a slide deck, export a new backup,
+  and optionally open/save through Google Drive with hourly autosave and local
+  snapshot fallback. Source: <https://github.com/somphol/tubeshelf-web>. The repo
+  carries its own handoff (`AGENTS.md`) and plan (`PLAN.md`).
 
 ## Requirements
 
@@ -291,7 +288,7 @@ choose `My Drive/TubeShelf Backups` once in the web app's Backups panel. It read
 and writes the folder directly; Drive carries the files to the Mac. Manual saves
 are timestamped and hourly `Local Sync` autosaves are kept (newest 24). Google
 sign-in remains an advanced alternative. Setup:
-[tubeshelf-web-rw/DRIVE.md](https://github.com/somphol/tubeshelf-web-rw/blob/main/DRIVE.md).
+[tubeshelf-web/DRIVE.md](https://github.com/somphol/tubeshelf-web/blob/main/DRIVE.md).
 
 Every video keeps the exact moment it was saved — an instant, not a wall time —
 and the deck shows it as `14 Nov 2026, 19:32 PST`. Because it is stored as an

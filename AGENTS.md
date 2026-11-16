@@ -365,15 +365,13 @@ per device. Local `save()` already writes every mutation. The companion web app'
   the Gatekeeper warning. Never commit library data, tokens or another person's
   shelf. The disclaimer lives in `DISCLAIMER.md`; keep it in sync with any change
   to distribution.
-- Read-only web viewer is live at <https://somphol.github.io/tubeshelf-web-ro/>,
-  from the public repo <https://github.com/somphol/tubeshelf-web-ro>. It must only
-  ever hold code and a public demo; the backup format contract is in its
-  `PLAN.md` / `format.schema.json`. Update both when the envelope changes.
-- Editable web app is at <https://somphol.github.io/tubeshelf-web-rw/>, from the
-  public repo <https://github.com/somphol/tubeshelf-web-rw>. It edits backups in
-  the browser, exports timestamped files, and has optional Google Drive
+- Web app is at <https://somphol.github.io/tubeshelf-web/>, from the public repo
+  <https://github.com/somphol/tubeshelf-web>. It edits backups in the browser,
+  exports timestamped files, presents a slide deck, and has optional Google Drive
   open/save with hourly change-only autosave plus local snapshot fallback. Drive
-  needs each user's own OAuth client; live OAuth is not verified in-repo.
+  can reuse the Google Drive for Desktop folder with no OAuth; Google sign-in is
+  an advanced alternative and live OAuth is not verified in-repo. The old
+  read-only viewer is retired; the surviving app keeps the last local copy.
   **Cross-repo rule:** when `TagTaxonomy` changes, run
   `python3 scripts/sync-taxonomy.py` in that repo and commit the generated
   `taxonomy.json`/`taxonomy.js`. When the backup format changes, update the RW

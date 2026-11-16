@@ -2,7 +2,7 @@ import XCTest
 @testable import TubeShelfCore
 
 /// The web editor must produce a file this decoder accepts. Regenerate the
-/// fixture from tubeshelf-web-rw when the format changes.
+/// fixture from tubeshelf-web when the format changes.
 final class WebExportTests: XCTestCase {
     func testWebExportedBackupDecodes() throws {
         let url = URL(fileURLWithPath: #filePath)

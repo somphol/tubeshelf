@@ -13,7 +13,7 @@ It is not a YouTube client: no login, no feed, no uploads.
 
 ```bash
 swift build                                  # debug build
-swift test                                   # 166 unit tests
+swift test                                   # 167 unit tests
 swift run tubeshelf-check                    # headless behavioural checks
 swift run tubeshelf-check --probe            # model availability + live tagging
 swift run tubeshelf-check --fetch <link>     # one real metadata fetch
@@ -211,19 +211,24 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   a stray file wipe data. `merge-base.json` is written after every successful
   backup and after a replace; ordinary edits never move it. A restore with a base
   runs `ShelfMerger`, applies one-sided changes, and opens
-  `MergeReviewView` only for conflicts. **Replace** stays explicit. Every merge
-  or replace writes `library-before-restore-*` and
-  `playlists-before-restore-*` copies first; never remove that step.
-- **A merge is one Undo step.** `AppModel.applyMerge` snapshots the library and
-  catalog, saves the merged shelf, and offers Undo in the toast. The merge base
-  is not moved by a merge: the incoming file is not an ancestor of the merged
-  shelf. Title, channel and duration are metadata: take the backup when the Mac
-  did not change them; an empty duration fills from the backup.
-- **No base means no automatic merge.** After a profile has never been backed up,
-  restore keeps the replace confirmation and says why. Do not silently treat the
-  current shelf as the base: that would discard local edits. A backup with no
-  videos is never merged into a populated profile; it offers Replace only, even
-  if it carries courses.
+  `MergeReviewView` only for conflicts. With no base, the same merge runs
+  conservatively: no deletions are inferred, current-only items are kept, and
+  every overlapping field asks. **Replace** stays explicit. Every merge or
+  replace writes full `backup-before-*` and `backup-after-*` envelopes plus the
+  older `library-before-restore-*` / `playlists-before-restore-*` copies; never
+  remove that step.
+- **A merge is one Undo step and two full backups.** `AppModel.applyMerge`
+  writes `backup-before-merge-*` (the current shelf), saves the merged shelf,
+  writes `backup-after-merge-*`, and offers Undo in the toast. Undo restores the
+  previous library, catalog and merge base (deleting `merge-base.json` if there
+  was none). Title, channel and duration are metadata: take the backup when the
+  Mac did not change them; an empty duration fills from the backup.
+- **No base means a conservative merge, not replace.** Never silently treat the
+  current shelf as the base: that would discard local edits. `base == nil` keeps
+  every current-only video/course, adds incoming-only items, and turns every
+  overlapping field difference into a conflict. After applying, the incoming
+  file becomes the new base. A backup with no videos is never merged into a
+  populated profile; it offers Replace only, even if it carries courses.
 - **Drive support is a folder write, not an API.** `CloudDriveLocator` scans
   `~/Library/CloudStorage/GoogleDrive-*/My Drive`; the button writes
   `TubeShelf Backups/<timestamped>.json` there. No OAuth, no tokens, no network

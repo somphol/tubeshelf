@@ -325,6 +325,21 @@ enum Snapshotter {
                     incoming: webShelf,
                     name: "TubeShelf 2026-11-15 10.00.00-web.json"
                 )
+            case "merge-apply":
+                let incoming = ShelfSnapshot(
+                    library: Library(videos: [Video(
+                        youtubeID: "mergeapply01",
+                        title: "Merged video",
+                        channel: "Check",
+                        tags: ["Math"]
+                    )]),
+                    playlists: []
+                )
+                _ = model.applyMerge(incoming, name: "merge-check", newBase: incoming)
+                let files = (try? FileManager.default.contentsOfDirectory(
+                    atPath: model.store.directory.path
+                )) ?? []
+                print("merge-check backups=\(files.filter { $0.hasPrefix("backup-") }.sorted())")
             case "edit":
                 model.editingVideoID = model.visibleVideos.first?.id
             case "page2":

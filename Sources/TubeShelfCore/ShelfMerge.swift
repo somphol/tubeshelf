@@ -39,6 +39,10 @@ public struct MergeBaseStore: Sendable {
         encoder.dateEncodingStrategy = .iso8601
         try encoder.encode(snapshot).write(to: fileURL, options: .atomic)
     }
+
+    public func clear() {
+        try? FileManager.default.removeItem(at: fileURL)
+    }
 }
 
 public enum MergeChoice: String, Codable, Sendable {

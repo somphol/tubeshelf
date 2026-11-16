@@ -59,17 +59,8 @@ enum BackupActions {
             return
         }
 
-        guard let base = model.mergeBase else {
-            presentReplace(
-                model,
-                incoming: incoming,
-                name: name,
-                note: "A merge needs a backup taken before your latest edits. Back up this profile first to enable merging."
-            )
-            return
-        }
-
-        if mine == base {
+        let base = model.mergeBase
+        if let base, mine == base {
             presentReplace(
                 model,
                 incoming: incoming,
@@ -79,7 +70,11 @@ enum BackupActions {
             return
         }
 
+        // With no common ancestor, the merge keeps every current video and
+        // course, adds incoming-only items, and asks only where an existing
+        // field differs. It never treats a missing video as a deletion.
         let result = ShelfMerger.merge(base: base, mine: mine, theirs: incoming)
+        let newBase: ShelfSnapshot? = base == nil ? incoming : nil
         if result.stats.changes == 0, result.conflicts.isEmpty {
             let alert = NSAlert()
             alert.messageText = "Already up to date"
@@ -90,9 +85,14 @@ enum BackupActions {
         }
 
         if result.conflicts.isEmpty {
-            presentMergeChoice(model, incoming: incoming, result: result, name: name)
+            presentMergeChoice(model, incoming: incoming, result: result, name: name, newBase: newBase)
         } else {
-            model.mergeReview = MergeReviewState(result: result, incoming: incoming, name: name)
+            model.mergeReview = MergeReviewState(
+                result: result,
+                incoming: incoming,
+                name: name,
+                newBase: newBase
+            )
         }
     }
 
@@ -109,7 +109,7 @@ enum BackupActions {
         “\(name)” has \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s") and \(incoming.playlists.count) playlist\(incoming.playlists.count == 1 ? "" : "s").
         This profile (“\(model.currentProfile?.name ?? "shelf")”) has \(model.library.count) videos and \(model.playlists.count) playlists.
         \(note)
-        The current library and catalog are copied aside in Application Support before anything changes.
+        Full backups of the current shelf and the replaced shelf are saved in Application Support, and the current library and catalog are copied aside too.
         """
         alert.addButton(withTitle: "Replace")
         alert.addButton(withTitle: "Cancel")
@@ -122,14 +122,15 @@ enum BackupActions {
         _ model: AppModel,
         incoming: ShelfSnapshot,
         result: ShelfMergeResult,
-        name: String
+        name: String,
+        newBase: ShelfSnapshot?
     ) {
         let alert = NSAlert()
         alert.messageText = "Merge \(result.stats.changes) backup change\(result.stats.changes == 1 ? "" : "s")?"
         alert.informativeText = """
         “\(name)” has \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s") and \(incoming.playlists.count) playlist\(incoming.playlists.count == 1 ? "" : "s").
         \(mergeStatsLine(result.stats))
-        The current profile stays; the backup is merged into it. You can undo the merge.
+        The current profile stays; the backup is merged into it. Full backups are saved before and after the merge, and you can undo it.
         """
         alert.addButton(withTitle: "Merge")
         alert.addButton(withTitle: "Replace")
@@ -137,7 +138,7 @@ enum BackupActions {
 
         switch alert.runModal() {
         case .alertFirstButtonReturn:
-            model.applyMerge(result.snapshot, name: name)
+            model.applyMerge(result.snapshot, name: name, newBase: newBase)
         case .alertSecondButtonReturn:
             model.replace(with: incoming, name: name)
         default:
@@ -155,7 +156,7 @@ enum BackupActions {
         alert.messageText = "That backup has no videos"
         alert.informativeText = """
         “\(name)” has no videos\(incoming.playlists.isEmpty ? " and no playlists" : ""). Merging could remove this profile's videos.
-        Replace the profile instead?
+        Replace the profile instead? A backup is saved before and after.
         """
         alert.addButton(withTitle: "Replace")
         alert.addButton(withTitle: "Cancel")

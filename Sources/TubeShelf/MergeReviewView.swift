@@ -6,6 +6,8 @@ struct MergeReviewState: Identifiable {
     var result: ShelfMergeResult
     var incoming: ShelfSnapshot
     var name: String
+    /// Set after a first merge with no ancestor: the incoming file becomes the base.
+    var newBase: ShelfSnapshot? = nil
 }
 
 /// Review a restore that overlaps edits already made on this Mac.
@@ -95,6 +97,9 @@ struct MergeReviewView: View {
             Text("\(count) conflict\(count == 1 ? "" : "s") need\(count == 1 ? "s" : "") a choice. Other backup changes are applied automatically.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text("A full backup is saved before and after merging.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -210,16 +215,18 @@ struct MergeReviewView: View {
             }
             Spacer()
             Button("Use Backup Instead") {
-                model.replace(with: review.incoming, name: review.name)
-                model.mergeReview = nil
-                dismiss()
+                if model.replace(with: review.incoming, name: review.name) {
+                    model.mergeReview = nil
+                    dismiss()
+                }
             }
             .foregroundStyle(.red)
             Button("Merge") {
                 let merged = ShelfMerger.resolve(review.result, choices: choices)
-                model.applyMerge(merged, name: review.name)
-                model.mergeReview = nil
-                dismiss()
+                if model.applyMerge(merged, name: review.name, newBase: review.newBase) {
+                    model.mergeReview = nil
+                    dismiss()
+                }
             }
             .buttonStyle(.borderedProminent)
             .tint(Theme.accent)

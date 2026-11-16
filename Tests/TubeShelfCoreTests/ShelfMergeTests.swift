@@ -148,6 +148,18 @@ final class ShelfMergeTests: XCTestCase {
         XCTAssertEqual(resolved.library.videos.first?.note, "edited")
     }
 
+    func testWithoutABaseKeepsCurrentOnlyVideosAndAddsIncoming() {
+        let mine = snapshot([video("a", note: "kept")])
+        let theirs = snapshot([video("b")])
+
+        let result = ShelfMerger.merge(base: nil, mine: mine, theirs: theirs)
+        XCTAssertEqual(result.snapshot.library.videos.map(\.youtubeID), ["a", "b"])
+        XCTAssertEqual(result.snapshot.library.videos[0].note, "kept")
+        XCTAssertTrue(result.conflicts.isEmpty)
+        XCTAssertEqual(result.stats.kept, 1)
+        XCTAssertEqual(result.stats.added, 1)
+    }
+
     func testWithoutABaseDifferencesBecomeConflicts() {
         let mine = snapshot([video("a", note: "mac", tags: ["Math"])])
         let theirs = snapshot([video("a", note: "web", tags: ["Calculus"])])
@@ -205,5 +217,7 @@ final class ShelfMergeTests: XCTestCase {
         let value = snapshot([video("a", note: "base")], tags: ["Math"], channels: ["A"])
         try store.save(value)
         XCTAssertEqual(store.load(), value)
+        store.clear()
+        XCTAssertNil(store.load())
     }
 }

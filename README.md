@@ -305,10 +305,16 @@ folder and it is a portable snapshot — not a live sync.
 three-way merge compares the backup, your Mac, and the last state you backed up:
 one-sided changes apply automatically; only fields changed on both sides ask. The
 review sheet shows This Mac / Backup / Both for every conflict, and the merge is
-one **Undo** step in the toast. If you have not backed up since editing, there is
-no common ancestor; the app falls back to the replace confirmation. A backup with
-no videos is never merged into a populated profile. **Replace** is always offered
-explicitly.
+one **Undo** step in the toast. If there is no common ancestor, the app still
+merges conservatively: every current video and course is kept, incoming-only
+items are added, and only fields that differ ask. No manual backup is needed.
+A backup with no videos is never merged into a populated profile, and
+**Replace** is always offered explicitly.
+
+Every merge and replace writes full backups **before and after** the change next
+to the profile: `backup-before-merge-*.json`, `backup-after-merge-*.json`,
+`backup-before-restore-*.json` and `backup-after-restore-*.json`. The older raw
+`library-before-restore-*` / `playlists-before-restore-*` copies are kept too.
 
 To keep both shelves instead, use *Profiles → Add from Backup…*, which creates a
 new profile and leaves yours alone. Before anything changes, the outgoing library
@@ -345,7 +351,7 @@ aside as `library-corrupt-<timestamp>.json` instead of being overwritten.
 ## Verification
 
 ```bash
-swift test                          # 166 unit tests: links, tagging, shelf, deck, merge, disk, profiles
+swift test                          # 167 unit tests: links, tagging, shelf, deck, merge, disk, profiles
 swift run tubeshelf-check           # headless checks against the same logic
 swift run tubeshelf-check --probe   # model status + live suggestions
 swift run tubeshelf-check --fetch <link>   # metadata + suggestion for one video

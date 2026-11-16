@@ -1259,9 +1259,15 @@ final class AppModel {
         return contents.library.count
     }
 
-    /// Replace the profile with a backup. The outgoing library and catalog are
-    /// copied aside so a wrong file is always recoverable.
-    func replace(with incoming: ShelfSnapshot, name: String) {
+    /// Replace the profile with a backup. Full backups are written before and
+    /// after the change, and the raw files are copied aside too.
+    @discardableResult
+    func replace(with incoming: ShelfSnapshot, name: String) -> Bool {
+        let before = snapshot
+        if let error = writeSafetyBackup(before, prefix: "backup-before-restore") {
+            flash("Could not create the before-restore backup: \(error)")
+            return false
+        }
         writeAside()
 
         library = incoming.library
@@ -1279,13 +1285,27 @@ final class AppModel {
 
         mergeBase = incoming
         try? MergeBaseStore(directory: store.directory).save(incoming)
-        flash("Restored \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s")")
+        let afterError = writeSafetyBackup(snapshot, prefix: "backup-after-restore")
+        flash(
+            "Restored \(incoming.library.count) video\(incoming.library.count == 1 ? "" : "s")"
+                + (afterError.map { " · after-backup failed: \($0)" } ?? "")
+        )
+        return true
     }
 
-    /// Apply a reviewed merge as one step. The merge base stays where it was:
-    /// the incoming file is not an ancestor of the merged shelf.
-    func applyMerge(_ merged: ShelfSnapshot, name: String) {
+    /// Apply a reviewed merge as one step. The current shelf is backed up before
+    /// the merge and the merged result after it. The merge base stays where it
+    /// was unless this was a first merge with no ancestor.
+    @discardableResult
+    func applyMerge(_ merged: ShelfSnapshot, name: String, newBase: ShelfSnapshot? = nil) -> Bool {
         let before = snapshot
+        let previousBase = mergeBase
+        if let error = writeSafetyBackup(before, prefix: "backup-before-merge") {
+            flash("Could not create the before-merge backup: \(error)")
+            return false
+        }
+        writeAside()
+
         library = merged.library
         playlists = merged.playlists
         savePlaylists()
@@ -1294,13 +1314,48 @@ final class AppModel {
         isAddPresented = false
         resetSelection()
         save()
-        flash("Merged \(name)", actionTitle: "Undo") { [weak self] in
+
+        if let newBase {
+            mergeBase = newBase
+            try? MergeBaseStore(directory: store.directory).save(newBase)
+        }
+        let afterError = writeSafetyBackup(snapshot, prefix: "backup-after-merge")
+        flash(
+            "Merged \(name)" + (afterError.map { " · after-backup failed: \($0)" } ?? ""),
+            actionTitle: "Undo"
+        ) { [weak self] in
             guard let self else { return }
             self.library = before.library
             self.playlists = before.playlists
+            self.mergeBase = previousBase
+            if let previousBase {
+                try? MergeBaseStore(directory: self.store.directory).save(previousBase)
+            } else {
+                MergeBaseStore(directory: self.store.directory).clear()
+            }
             self.savePlaylists()
             self.save()
             self.flash("Merge undone")
+        }
+        return true
+    }
+
+    /// A full, restorable backup next to the profile. Returns nil on success.
+    private func writeSafetyBackup(_ snapshot: ShelfSnapshot, prefix: String) -> String? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        let stamp = formatter.string(from: Date())
+        let url = store.directory.appendingPathComponent("\(prefix)-\(stamp).json")
+        do {
+            try BackupService().write(
+                snapshot.library,
+                playlists: snapshot.playlists,
+                to: url
+            )
+            return nil
+        } catch {
+            return error.localizedDescription
         }
     }
 

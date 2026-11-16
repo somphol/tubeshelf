@@ -304,8 +304,9 @@ folder and it is a portable snapshot — not a live sync.
 *Restore…* reads that file back and merges it into the **current profile**. A
 three-way merge compares the backup, your Mac, and the last state you backed up:
 one-sided changes apply automatically; only fields changed on both sides ask. The
-review sheet shows This Mac / Backup / Both for every conflict, and the merge is
-one **Undo** step in the toast. If there is no common ancestor, the app still
+review sheet walks the differences one at a time: **Keep This Mac / Use the
+Backup / Keep Both**, with **Back** to revisit the last choice and Merge enabled
+only when none are left. The merge is one **Undo** step in the toast. If there is no common ancestor, the app still
 merges conservatively: every current video and course is kept, incoming-only
 items are added, and only fields that differ ask. No manual backup is needed.
 A backup with no videos is never merged into a populated profile, and

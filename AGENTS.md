@@ -211,12 +211,18 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   a stray file wipe data. `merge-base.json` is written after every successful
   backup and after a replace; ordinary edits never move it. A restore with a base
   runs `ShelfMerger`, applies one-sided changes, and opens
-  `MergeReviewView` only for conflicts. With no base, the same merge runs
+  `MergeReviewView` only for conflicts. The sheet flattens the groups into a
+  one-diff queue with Back and bulk shortcuts; Merge stays disabled until the
+  pending count is zero. With no base, the same merge runs
   conservatively: no deletions are inferred, current-only items are kept, and
   every overlapping field asks. **Replace** stays explicit. Every merge or
   replace writes full `backup-before-*` and `backup-after-*` envelopes plus the
   older `library-before-restore-*` / `playlists-before-restore-*` copies; never
   remove that step.
+- **The merge sheet is a queue, not a wall of pickers.** `MergeReviewView`
+  flattens field and presence conflicts into `MergeDiff`s, shows the current one,
+  and advances on a choice. Keep choices when going Back, and disable Merge until
+  `pending` is empty. Do not revert to rendering every conflict at once.
 - **A merge is one Undo step and two full backups.** `AppModel.applyMerge`
   writes `backup-before-merge-*` (the current shelf), saves the merged shelf,
   writes `backup-after-merge-*`, and offers Undo in the toast. Undo restores the

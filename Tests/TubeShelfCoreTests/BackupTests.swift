@@ -125,19 +125,27 @@ final class BackupTests: XCTestCase {
         let name = ShelfBackup.suggestedFileName(
             for: date,
             timeZone: zone,
-            profileName: "Work / Study: 2026"
+            profileName: "Work / Study: 2026",
+            machineName: "My Mac"
         )
-        XCTAssertEqual(name, "TubeShelf Work - Study - 2026 2026-11-14 15.42.07 \(label).json")
+        XCTAssertEqual(
+            name,
+            "TubeShelf Work - Study - 2026 @ My Mac 2026-11-14 15.42.07 \(label).json"
+        )
         XCTAssertEqual(ShelfBackup.profileName(fromFileName: name), "Work - Study - 2026")
     }
 
     func testProfileNameParsesNewAndOldFileNames() {
         let new = "TubeShelf My Shelf 2026-11-14 15.42.07 PST.json"
+        let machine = "TubeShelf My Shelf @ My Mac 2026-11-14 15.42.07 PST.json"
+        let machineWeb = "TubeShelf My Shelf @ Work PC 2026-11-14 15.42.07-web.json"
         let web = "TubeShelf My Shelf 2026-11-14 15.42.07 PST-web.json"
         let webNoZone = "TubeShelf My Shelf 2026-11-14 15.42.07-web.json"
         let old = "TubeShelf 2026-11-14 15.42.07 PST.json"
         let oldWeb = "TubeShelf 2026-11-14 15.42.07-web.json"
         XCTAssertEqual(ShelfBackup.profileName(fromFileName: new), "My Shelf")
+        XCTAssertEqual(ShelfBackup.profileName(fromFileName: machine), "My Shelf")
+        XCTAssertEqual(ShelfBackup.profileName(fromFileName: machineWeb), "My Shelf")
         XCTAssertEqual(ShelfBackup.profileName(fromFileName: web), "My Shelf")
         XCTAssertEqual(ShelfBackup.profileName(fromFileName: webNoZone), "My Shelf")
         XCTAssertNil(ShelfBackup.profileName(fromFileName: old))
@@ -146,7 +154,7 @@ final class BackupTests: XCTestCase {
     }
 
     func testSanitizedProfileNameDropsPathHostileCharacters() {
-        XCTAssertEqual(ShelfBackup.sanitizedProfileName("A/B:C*?\"<>|"), "A - B - C")
+        XCTAssertEqual(ShelfBackup.sanitizedProfileName("A/B:C*?\"<>|@"), "A - B - C")
         XCTAssertEqual(ShelfBackup.sanitizedProfileName("   "), "")
         XCTAssertEqual(ShelfBackup.sanitizedProfileName(nil), "")
     }

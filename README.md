@@ -297,8 +297,8 @@ original value is never rewritten by an import.
 
 *Settings → Library → **Back up…*** (or **⇧⌘S**) writes one JSON file:
 videos, categories, notes and pins. The suggested name carries the profile, e.g.
-`TubeShelf My Shelf 2026-11-14 15.42.07 PST.json`, so several shelves do not look
-identical in the same Drive folder. Put it in a Google Drive, Dropbox or iCloud
+`TubeShelf My Shelf @ Somphol-MacBook-Pro 2026-11-14 15.42.07 PST.json`, so several
+shelves and machines do not look identical in the same Drive folder. Put it in a Google Drive, Dropbox or iCloud
 folder and it is a portable snapshot — not a live sync.
 
 *Restore…* reads that file back and merges it into the **current profile**. A

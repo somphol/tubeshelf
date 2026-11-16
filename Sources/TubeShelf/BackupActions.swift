@@ -14,7 +14,8 @@ enum BackupActions {
         panel.title = "Back up \(model.currentProfile?.name ?? "your shelf")"
         panel.prompt = "Back up"
         panel.nameFieldStringValue = ShelfBackup.suggestedFileName(
-            profileName: model.currentProfile?.name
+            profileName: model.currentProfile?.name,
+            machineName: ShelfBackup.machineName()
         )
         panel.allowedContentTypes = [.json]
         panel.canCreateDirectories = true
@@ -189,7 +190,10 @@ enum BackupActions {
         do {
             let folder = try model.cloudLocator.backupFolder(in: drive)
             let url = folder.appendingPathComponent(
-                ShelfBackup.suggestedFileName(profileName: model.currentProfile?.name)
+                ShelfBackup.suggestedFileName(
+                    profileName: model.currentProfile?.name,
+                    machineName: ShelfBackup.machineName()
+                )
             )
             try model.backup(to: url)
             Preferences.driveAccountPath = drive.myDrive.path

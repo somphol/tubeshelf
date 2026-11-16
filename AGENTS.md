@@ -199,11 +199,13 @@ Three modules, one direction of dependency: `TubeShelfCheck â†’ TubeShelfCore â†
   `playlists` array; `BackupService.readContents` returns both; profile import
   writes the new profile's `playlists.json`; restore copies both files aside.
   When adding an export path, include the catalog or the feature is half-exported.
-- **Backup filenames carry the profile.** `ShelfBackup.suggestedFileName` prefixes
-  `TubeShelf <profile> `, sanitised for `/ \ : * ? " < > |` and capped at 60
-  characters. `ShelfBackup.profileName(fromFileName:)` reads it back for profile
-  import and accepts the older timestamp-only name by returning nil. Do not put
-  the profile in the JSON envelope; the filename is the only place it belongs.
+- **Backup filenames carry the profile and machine.** `ShelfBackup.suggestedFileName`
+  prefixes `TubeShelf <profile> @ <machine> `, using
+  `ShelfBackup.machineName()` (`Host.localizedName`, `.local` stripped, sanitised).
+  Components are sanitised for `/ \ : * ? " < > | @` and capped at 60 characters.
+  `profileName(fromFileName:)` reads the profile back and accepts both the new
+  `@ machine` and older timestamp-only shapes. Do not put either value in the JSON
+  envelope; the filename is the only place they belong.
 - **Backups are a versioned envelope; restores merge by default.** The backup
   carries `format` and `version`; a newer version is refused with a clear reason.
   Raw `library.json` is accepted only when a top-level `videos` array exists,

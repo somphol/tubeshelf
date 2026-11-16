@@ -127,16 +127,17 @@ public struct ShelfBackup {
         }
     }
 
-    /// `TubeShelf My Shelf 2026-11-14 15.42.07 PST.json`
+    /// `TubeShelf My Shelf @ Somphol-MacBook-Pro 2026-11-14 15.42.07 PST.json`
     ///
-    /// The profile name keeps two shelves from looking identical once they sit
+    /// The profile and machine keep shelves from looking identical once they sit
     /// side by side in Drive. Date, time to the second, and the zone because two
     /// backups on the same day are otherwise indistinguishable. No colon or
     /// slash: both are hostile in filenames and in sync folders.
     public static func suggestedFileName(
         for date: Date = Date(),
         timeZone: TimeZone = .current,
-        profileName: String? = nil
+        profileName: String? = nil,
+        machineName: String? = nil
     ) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -150,7 +151,18 @@ public struct ShelfBackup {
             .replacingOccurrences(of: "/", with: "-")
 
         let profile = sanitizedProfileName(profileName)
-        let prefix = profile.isEmpty ? "TubeShelf " : "TubeShelf \(profile) "
+        let machine = sanitizedProfileName(machineName)
+        let identity: String
+        if profile.isEmpty && machine.isEmpty {
+            identity = ""
+        } else if machine.isEmpty {
+            identity = profile
+        } else if profile.isEmpty {
+            identity = "@ \(machine)"
+        } else {
+            identity = "\(profile) @ \(machine)"
+        }
+        let prefix = identity.isEmpty ? "TubeShelf " : "TubeShelf \(identity) "
         return "\(prefix)\(stamp) \(safeZone).json"
     }
 
@@ -158,7 +170,7 @@ public struct ShelfBackup {
     /// Keep letters, numbers and spaces; replace path-hostile punctuation.
     public static func sanitizedProfileName(_ raw: String?) -> String {
         guard let raw else { return "" }
-        let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)
+        let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|@").union(.controlCharacters)
         var cleaned = raw.components(separatedBy: forbidden).joined(separator: " - ")
         cleaned = cleaned.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -166,8 +178,21 @@ public struct ShelfBackup {
         return String(cleaned.prefix(60)).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Read the profile back out of a backup filename. Returns nil for the older
-    /// `TubeShelf <timestamp> <zone>.json` shape, so callers can fall back.
+    /// The local Mac's display name, used in backup filenames.
+    public static func machineName() -> String {
+        let host = Host.current().localizedName
+            ?? ProcessInfo.processInfo.hostName
+        let cleaned = host.replacingOccurrences(
+            of: ".local",
+            with: "",
+            options: .caseInsensitive
+        )
+        return sanitizedProfileName(cleaned)
+    }
+
+    /// Read the profile back out of a backup filename. Accepts both
+    /// `TubeShelf <profile> @ <machine> <timestamp>` and the older
+    /// `TubeShelf <profile> <timestamp>` shape; `-web` names are accepted too.
     public static func profileName(fromFileName name: String) -> String? {
         var stem = name
         if stem.lowercased().hasSuffix(".json") {
@@ -176,14 +201,20 @@ public struct ShelfBackup {
         if stem.hasSuffix("-web") {
             stem = String(stem.dropLast(4))
         }
-        let pattern = #"^TubeShelf (.*?) \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}(?: \S+)?$"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let patterns = [
+            #"^TubeShelf (.*?) @ .*? \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}(?: \S+)?$"#,
+            #"^TubeShelf (.*?) \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}(?: \S+)?$"#,
+        ]
         let range = NSRange(stem.startIndex..<stem.endIndex, in: stem)
-        guard let match = regex.firstMatch(in: stem, range: range),
-              let profileRange = Range(match.range(at: 1), in: stem)
-        else { return nil }
-        let profile = String(stem[profileRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-        return profile.isEmpty ? nil : profile
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: stem, range: range),
+                  let profileRange = Range(match.range(at: 1), in: stem)
+            else { continue }
+            let profile = String(stem[profileRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+            return profile.isEmpty ? nil : profile
+        }
+        return nil
     }
 
     private static func gmtOffsetName(for timeZone: TimeZone, date: Date) -> String {
